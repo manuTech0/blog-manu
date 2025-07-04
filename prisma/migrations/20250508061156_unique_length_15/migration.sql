@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "User" ALTER COLUMN "uniqueId" SET DATA TYPE VARCHAR(15);

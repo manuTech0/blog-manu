@@ -1,0 +1,44 @@
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../lib/generated/prisma"
+  previewFeatures = ["relationJoins"]
+}
+
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model Post {
+  postId    Int      @id @default(autoincrement())
+  title     String   @unique @db.VarChar(120)
+  content   String
+  userId    Int
+  createdAt DateTime @default(now())
+  updateAt  DateTime @updatedAt
+  isDeleted Boolean  @default(false)
+  slug      String
+  user      User     @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model User {
+  userId     Int       @id @default(autoincrement())
+  username   String    @unique @db.VarChar(110)
+  email      String    @unique @db.VarChar(110)
+  uniqueId   String?   @unique @db.VarChar(15)
+  password   String
+  otp        String?
+  role       Role      @default(USER)
+  createdAt  DateTime  @default(now())
+  updateAt   DateTime  @updatedAt
+  isDeleted  Boolean   @default(false)
+  isVerified Boolean   @default(false)
+  otpExp     DateTime?
+  post       Post[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}

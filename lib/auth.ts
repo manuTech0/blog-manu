@@ -18,6 +18,7 @@ export async function getUserFromToken() {
             }}
         })
         return user
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
         return null
     }

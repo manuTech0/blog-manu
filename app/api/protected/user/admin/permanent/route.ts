@@ -1,7 +1,8 @@
-import { User } from "@/lib/generated/prisma";
+import { User } from "@/lib/types";
 import { CustomJWTPayload, isTokenError, TokenError, verifyToken } from "@/lib/jwt";
 import { logger } from "@/lib/logger";
 import prisma from "@/lib/prisma";
+import { ApiResponse, ErrorZod } from "@/lib/types";
 import { JWTVerifyResult } from "jose";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -10,7 +11,15 @@ const DeleteDataScheama = z.array(z.number().min(1))
 
 type DeleteData = z.infer<typeof DeleteDataScheama>
 
-export async function GET(request: NextRequest) {
+
+/**
+ *
+ *
+ * @export
+ * @param {NextRequest} request
+ * @return {*}  {Promise<NextResponse<ApiResponse<User>>>}
+ */
+export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<User>>> {
     try {
         const token: string | null | undefined = request.cookies.get("token")?.value || request.headers.get("Authorization")?.split(' ')[1]
         const payload: JWTVerifyResult<CustomJWTPayload> | TokenError = await verifyToken(token || "token")
@@ -19,11 +28,12 @@ export async function GET(request: NextRequest) {
         }
         if(payload.payload.role == "ADMIN") {
             const url: URL = new URL(request.url)
-            const page: Number = parseInt(url.searchParams.get("page") || "1", 2)
-            const user: User[] = await prisma.user.findMany({
+            const page: number = parseInt(url.searchParams.get("page") || "1", 2)
+            const user = await prisma.user.findMany({
                 where: { isDeleted: true },
                 skip: ((Number(page) - 1) * 15),
-                take: 10
+                take: 10,
+                omit: { password: true, otp: true}
             })
             if(user.length == 0 || user == null) {
                 return NextResponse.json({
@@ -38,7 +48,7 @@ export async function GET(request: NextRequest) {
             })
         } else {
             return NextResponse.json({
-                messae: "Access not granted",
+                message: "Access not granted",
                 error: true
             }, { status: 501 })
         }
@@ -56,7 +66,15 @@ export async function GET(request: NextRequest) {
         }, { status: 500 } )
     }
 }
-export async function DELETE(request: NextRequest) {
+
+/**
+ *
+ *
+ * @export
+ * @param {NextRequest} request
+ * @return {*}  {Promise<NextResponse<ApiResponse<User>>>}
+ */
+export async function DELETE(request: NextRequest): Promise<NextResponse<ApiResponse<User | ErrorZod[]>>> {
     try {
         const token: string | null | undefined = request.cookies.get("token")?.value || request.headers.get("Authorization")?.split(' ')[1]
         const payload: JWTVerifyResult<CustomJWTPayload> | TokenError = await verifyToken(token || "token")
@@ -71,19 +89,19 @@ export async function DELETE(request: NextRequest) {
                 where: { userId: { in: validatedData } }
             })
             return NextResponse.json({
-                messgae: "Success deleted with data :",
+                message: "Success deleted with data :",
                 data: responseDelete,
                 error: false
             }, { status: 200 })
         } else {
             return NextResponse.json({
-                messae: "Access not granted",
+                message: "Access not granted",
                 error: true
             }, { status: 501 })
         }
     } catch (error) {
         if(error instanceof z.ZodError) {
-            const errorMessage = error.errors.map(err => ({
+            const errorMessage: ErrorZod[] = error.issues.map(err => ({
                 path: err.path.join('.'),
                 message: err.message
             }))
@@ -95,11 +113,15 @@ export async function DELETE(request: NextRequest) {
             }, { status: 200 })
         }
         if(error instanceof Error) {
-            const errorReport = logger.error("Unknown error", error)
+            logger.error("Unknown error", error)
             return NextResponse.json({
                 message: "Unknown error, please report to admin or customer service, time error: " + new Date().getTime(),
                 error: true
             }, { status: 500 } )
         }
+        return NextResponse.json({
+            message: "Unknown error, please report to admin or customer service, time error: " + new Date().getTime(),
+            error: true
+        }, { status: 500 } )
     }
 }

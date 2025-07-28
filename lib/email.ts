@@ -1,19 +1,6 @@
-import { CreateEmailResponse, Resend } from "resend";
-import { logger } from "./logger";
+import { Resend } from 'resend';
 import OTP from "otp-generator"
-
-interface Options {
-    type: "otp" | "other",
-    message?: string;
-    target: string;
-}
-interface EmailSendResponse {
-    message: string;
-    error: boolean;
-    id?: string;
-    data?: object;
-    otp?: string;
-}
+import { EmailSendResponse } from './types';
 
 export async function sendOTP(target: string): Promise<EmailSendResponse> {
     const resend = new Resend(process.env.RESEND_API_KEY)

@@ -1,103 +1,95 @@
-import Image from "next/image";
+"use client"
+import * as React from "react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { motion } from "framer-motion"
+import Cookies from "js-cookie"
+import { ApiResponse, User } from "@/lib/types"
+import axios from "axios"
+import NewBlogs from "@/components/newBlogs"
+import ThemeToggle from "@/components/toggleThemeButton"
 
-export default function Home() {
+
+
+export default function LandingPage() {
+  const [myUser, setMyUser] = React.useState<User | undefined>(undefined)
+  const [viewBlogs, setViewBlogs] = React.useState(false)
+  React.useEffect(() => {
+    (async () => {
+      const token = Cookies.get("token")
+      const response = await axios.get("/api/protected/user/myuser", {
+        headers: {
+          "Authorization": "Bearer " + token,
+          "Content-Type": "application/json"
+        }
+      })
+      const data: ApiResponse<User> = response.data
+      if(data && data.data as User ) {
+        setMyUser(data.data as User)
+      } 
+    })()
+  }, [])
+  
+  React.useEffect(() => {
+    (async () => {
+      const token = Cookies.get("token")
+      const response = await axios.get("/api/protected/user/myuser", {
+        headers: {
+          "Authorization": "Bearer " + token,
+          "Content-Type": "application/json"
+        }
+      })
+      const data: ApiResponse<User> = response.data
+      if(data && data.data as User ) {
+        setMyUser(data.data as User)
+      } 
+    })()
+  }, [])
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <>
+      <main className="min-h-screen bg-gradient-to-br from-white to-slate-100 flex flex-col items-center justify-center px-4">
+        <motion.div
+          className="text-center max-w-2xl w-screen"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7 }}
+        >
+          <h1 className="text-5xl font-extrabold tracking-tight text-slate-900 mb-4">
+            Welcome to <span className="text-blue-600">BlogNest</span>
+          </h1>
+          <p className="text-lg text-slate-600 mb-6">
+            A modern blogging platform where ideas come alive. Share your stories, explore articles, and connect with the world.
+          </p>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            {myUser == undefined ? (
+              <>
+                <Link href="/login">
+                  <Button variant="default">Login</Button>
+                </Link>
+                <Link href="/register">
+                  <Button variant="secondary">Register</Button>
+                </Link>
+              </>
+            ) : ""}
+            <Link href="/#blogs">
+              <Button onClick={() => setViewBlogs(!viewBlogs)}>Explore Blogs</Button>
+            </Link>
+          </div>
+        </motion.div>
+        <motion.footer
+          className="absolute bottom-4 text-xs text-gray-500"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1 }}
+        >
+          © {new Date().getFullYear()} BlogNest. Crafted with ♥
+        </motion.footer>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+      {viewBlogs ? (
+        <NewBlogs></NewBlogs>
+      ) : ""}
+    </>
+  )
 }

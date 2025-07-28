@@ -2183,6 +2183,7 @@ export namespace Prisma {
     updateAt: Date | null
     isDeleted: boolean | null
     isVerified: boolean | null
+    isBanned: boolean | null
     otpExp: Date | null
   }
 
@@ -2198,6 +2199,7 @@ export namespace Prisma {
     updateAt: Date | null
     isDeleted: boolean | null
     isVerified: boolean | null
+    isBanned: boolean | null
     otpExp: Date | null
   }
 
@@ -2213,6 +2215,7 @@ export namespace Prisma {
     updateAt: number
     isDeleted: number
     isVerified: number
+    isBanned: number
     otpExp: number
     _all: number
   }
@@ -2238,6 +2241,7 @@ export namespace Prisma {
     updateAt?: true
     isDeleted?: true
     isVerified?: true
+    isBanned?: true
     otpExp?: true
   }
 
@@ -2253,6 +2257,7 @@ export namespace Prisma {
     updateAt?: true
     isDeleted?: true
     isVerified?: true
+    isBanned?: true
     otpExp?: true
   }
 
@@ -2268,6 +2273,7 @@ export namespace Prisma {
     updateAt?: true
     isDeleted?: true
     isVerified?: true
+    isBanned?: true
     otpExp?: true
     _all?: true
   }
@@ -2370,6 +2376,7 @@ export namespace Prisma {
     updateAt: Date
     isDeleted: boolean
     isVerified: boolean
+    isBanned: boolean
     otpExp: Date | null
     _count: UserCountAggregateOutputType | null
     _avg: UserAvgAggregateOutputType | null
@@ -2404,6 +2411,7 @@ export namespace Prisma {
     updateAt?: boolean
     isDeleted?: boolean
     isVerified?: boolean
+    isBanned?: boolean
     otpExp?: boolean
     post?: boolean | User$postArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
@@ -2421,6 +2429,7 @@ export namespace Prisma {
     updateAt?: boolean
     isDeleted?: boolean
     isVerified?: boolean
+    isBanned?: boolean
     otpExp?: boolean
   }, ExtArgs["result"]["user"]>
 
@@ -2436,6 +2445,7 @@ export namespace Prisma {
     updateAt?: boolean
     isDeleted?: boolean
     isVerified?: boolean
+    isBanned?: boolean
     otpExp?: boolean
   }, ExtArgs["result"]["user"]>
 
@@ -2451,10 +2461,11 @@ export namespace Prisma {
     updateAt?: boolean
     isDeleted?: boolean
     isVerified?: boolean
+    isBanned?: boolean
     otpExp?: boolean
   }
 
-  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"userId" | "username" | "email" | "uniqueId" | "password" | "otp" | "role" | "createdAt" | "updateAt" | "isDeleted" | "isVerified" | "otpExp", ExtArgs["result"]["user"]>
+  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"userId" | "username" | "email" | "uniqueId" | "password" | "otp" | "role" | "createdAt" | "updateAt" | "isDeleted" | "isVerified" | "isBanned" | "otpExp", ExtArgs["result"]["user"]>
   export type UserInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     post?: boolean | User$postArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
@@ -2479,6 +2490,7 @@ export namespace Prisma {
       updateAt: Date
       isDeleted: boolean
       isVerified: boolean
+      isBanned: boolean
       otpExp: Date | null
     }, ExtArgs["result"]["user"]>
     composites: {}
@@ -2915,6 +2927,7 @@ export namespace Prisma {
     readonly updateAt: FieldRef<"User", 'DateTime'>
     readonly isDeleted: FieldRef<"User", 'Boolean'>
     readonly isVerified: FieldRef<"User", 'Boolean'>
+    readonly isBanned: FieldRef<"User", 'Boolean'>
     readonly otpExp: FieldRef<"User", 'DateTime'>
   }
     
@@ -3403,6 +3416,7 @@ export namespace Prisma {
     updateAt: 'updateAt',
     isDeleted: 'isDeleted',
     isVerified: 'isVerified',
+    isBanned: 'isBanned',
     otpExp: 'otpExp'
   };
 
@@ -3605,6 +3619,7 @@ export namespace Prisma {
     updateAt?: DateTimeFilter<"User"> | Date | string
     isDeleted?: BoolFilter<"User"> | boolean
     isVerified?: BoolFilter<"User"> | boolean
+    isBanned?: BoolFilter<"User"> | boolean
     otpExp?: DateTimeNullableFilter<"User"> | Date | string | null
     post?: PostListRelationFilter
   }
@@ -3621,6 +3636,7 @@ export namespace Prisma {
     updateAt?: SortOrder
     isDeleted?: SortOrder
     isVerified?: SortOrder
+    isBanned?: SortOrder
     otpExp?: SortOrderInput | SortOrder
     post?: PostOrderByRelationAggregateInput
   }
@@ -3640,6 +3656,7 @@ export namespace Prisma {
     updateAt?: DateTimeFilter<"User"> | Date | string
     isDeleted?: BoolFilter<"User"> | boolean
     isVerified?: BoolFilter<"User"> | boolean
+    isBanned?: BoolFilter<"User"> | boolean
     otpExp?: DateTimeNullableFilter<"User"> | Date | string | null
     post?: PostListRelationFilter
   }, "userId" | "username" | "email" | "uniqueId">
@@ -3656,6 +3673,7 @@ export namespace Prisma {
     updateAt?: SortOrder
     isDeleted?: SortOrder
     isVerified?: SortOrder
+    isBanned?: SortOrder
     otpExp?: SortOrderInput | SortOrder
     _count?: UserCountOrderByAggregateInput
     _avg?: UserAvgOrderByAggregateInput
@@ -3679,6 +3697,7 @@ export namespace Prisma {
     updateAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
     isDeleted?: BoolWithAggregatesFilter<"User"> | boolean
     isVerified?: BoolWithAggregatesFilter<"User"> | boolean
+    isBanned?: BoolWithAggregatesFilter<"User"> | boolean
     otpExp?: DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
   }
 
@@ -3766,6 +3785,7 @@ export namespace Prisma {
     updateAt?: Date | string
     isDeleted?: boolean
     isVerified?: boolean
+    isBanned?: boolean
     otpExp?: Date | string | null
     post?: PostCreateNestedManyWithoutUserInput
   }
@@ -3782,6 +3802,7 @@ export namespace Prisma {
     updateAt?: Date | string
     isDeleted?: boolean
     isVerified?: boolean
+    isBanned?: boolean
     otpExp?: Date | string | null
     post?: PostUncheckedCreateNestedManyWithoutUserInput
   }
@@ -3797,6 +3818,7 @@ export namespace Prisma {
     updateAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isDeleted?: BoolFieldUpdateOperationsInput | boolean
     isVerified?: BoolFieldUpdateOperationsInput | boolean
+    isBanned?: BoolFieldUpdateOperationsInput | boolean
     otpExp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     post?: PostUpdateManyWithoutUserNestedInput
   }
@@ -3813,6 +3835,7 @@ export namespace Prisma {
     updateAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isDeleted?: BoolFieldUpdateOperationsInput | boolean
     isVerified?: BoolFieldUpdateOperationsInput | boolean
+    isBanned?: BoolFieldUpdateOperationsInput | boolean
     otpExp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     post?: PostUncheckedUpdateManyWithoutUserNestedInput
   }
@@ -3829,6 +3852,7 @@ export namespace Prisma {
     updateAt?: Date | string
     isDeleted?: boolean
     isVerified?: boolean
+    isBanned?: boolean
     otpExp?: Date | string | null
   }
 
@@ -3843,6 +3867,7 @@ export namespace Prisma {
     updateAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isDeleted?: BoolFieldUpdateOperationsInput | boolean
     isVerified?: BoolFieldUpdateOperationsInput | boolean
+    isBanned?: BoolFieldUpdateOperationsInput | boolean
     otpExp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
 
@@ -3858,6 +3883,7 @@ export namespace Prisma {
     updateAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isDeleted?: BoolFieldUpdateOperationsInput | boolean
     isVerified?: BoolFieldUpdateOperationsInput | boolean
+    isBanned?: BoolFieldUpdateOperationsInput | boolean
     otpExp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
 
@@ -4067,6 +4093,7 @@ export namespace Prisma {
     updateAt?: SortOrder
     isDeleted?: SortOrder
     isVerified?: SortOrder
+    isBanned?: SortOrder
     otpExp?: SortOrder
   }
 
@@ -4086,6 +4113,7 @@ export namespace Prisma {
     updateAt?: SortOrder
     isDeleted?: SortOrder
     isVerified?: SortOrder
+    isBanned?: SortOrder
     otpExp?: SortOrder
   }
 
@@ -4101,6 +4129,7 @@ export namespace Prisma {
     updateAt?: SortOrder
     isDeleted?: SortOrder
     isVerified?: SortOrder
+    isBanned?: SortOrder
     otpExp?: SortOrder
   }
 
@@ -4440,6 +4469,7 @@ export namespace Prisma {
     updateAt?: Date | string
     isDeleted?: boolean
     isVerified?: boolean
+    isBanned?: boolean
     otpExp?: Date | string | null
   }
 
@@ -4455,6 +4485,7 @@ export namespace Prisma {
     updateAt?: Date | string
     isDeleted?: boolean
     isVerified?: boolean
+    isBanned?: boolean
     otpExp?: Date | string | null
   }
 
@@ -4485,6 +4516,7 @@ export namespace Prisma {
     updateAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isDeleted?: BoolFieldUpdateOperationsInput | boolean
     isVerified?: BoolFieldUpdateOperationsInput | boolean
+    isBanned?: BoolFieldUpdateOperationsInput | boolean
     otpExp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
 
@@ -4500,6 +4532,7 @@ export namespace Prisma {
     updateAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isDeleted?: BoolFieldUpdateOperationsInput | boolean
     isVerified?: BoolFieldUpdateOperationsInput | boolean
+    isBanned?: BoolFieldUpdateOperationsInput | boolean
     otpExp?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
 

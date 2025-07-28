@@ -40,15 +40,16 @@ import axios from "axios"
 import { AlertDialog, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog"
 import { AlertDialogAction, AlertDialogCancel, AlertDialogDescription, AlertDialogTrigger } from "@radix-ui/react-alert-dialog"
 import { useRouter } from "next/navigation"
-import type { TriggerDialogForm, Post } from "../lib/types"
+import type { TriggerDialogForm, Post, TableMode, User } from "../lib/types"
 import { Skeleton } from "./ui/skeleton"
 
 export function PostAdminTable({
-  data, triggerDialogForm, isLoading
+  data, triggerDialogForm, isLoading, tableMode = "data"
 }: { 
-  data: Post[],
+  data: Post<User>[],
   triggerDialogForm: React.Dispatch<React.SetStateAction<TriggerDialogForm>>,
-  isLoading: boolean
+  isLoading: boolean,
+  tableMode?: TableMode
 }) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -69,7 +70,7 @@ export function PostAdminTable({
     setToken(tokenCookies || "token")
   }, [])
 
-  const columns: ColumnDef<Post>[] = [
+  const columns: ColumnDef<Post<User>>[] = [
     {
       id: "select",
       header: ({ table }) => (
@@ -114,7 +115,7 @@ export function PostAdminTable({
       },
       cell: ({ row }) => {
         const { user, slug, title } = row.original
-        return <div className="text-left"><a href={`/${user.username}/${slug}`}>{title.slice(0, 50) + "..."}</a></div>
+        return <div className="text-left"><a href={`/${user?.username}/${slug}`}>{title.slice(0, 50) + "..."}</a></div>
       }
     },
     {
@@ -122,7 +123,7 @@ export function PostAdminTable({
       header: () => <div className="text-center">Username</div>,
       cell: ({ row }) => {
         const { user } = row.original
-        return <div className="text-center capitalize"><a href={`/${user.username}`}>{user.username}</a></div>
+        return <div className="text-center capitalize"><a href={`/${user?.username}`}>{user?.username}</a></div>
       }
     },
     {
@@ -130,7 +131,7 @@ export function PostAdminTable({
       header: () => <div className="text-center">Role</div>,
       cell: ({ row }) => {
         const { user } = row.original
-        return <div className="text-center lowercase">{user.role}</div>
+        return <div className="text-center lowercase">{user?.role}</div>
       }
     },
     {
@@ -156,21 +157,67 @@ export function PostAdminTable({
                   Copy slug
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => triggerDialogForm({
-                    mode: "edit",
-                    dataType: "post",
-                    dialog: true,
-                    data: post
-                  })}
-                >
-                  Edit
-                </DropdownMenuItem>
-                <AlertDialogTrigger asChild>
-                  <DropdownMenuItem>
-                    Delete
-                  </DropdownMenuItem>
-                </AlertDialogTrigger>
+                {
+                  (tableMode == "data") ? (
+                    <div>
+                      <DropdownMenuItem
+                        onClick={() => triggerDialogForm({
+                          mode: "edit",
+                          dataType: "post",
+                          dialog: true,
+                          data: post as Post
+                        })}
+                      >
+                        Edit
+                      </DropdownMenuItem>
+                      <AlertDialogTrigger asChild>
+                        <DropdownMenuItem>
+                          Delete
+                        </DropdownMenuItem>
+                      </AlertDialogTrigger>
+                    </div>
+                  ) : (
+                    <div>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          toast.promise(axios.put("/api/protected/post/permanent/recovery", [post.postId], {
+                            headers: {
+                              "Content-Type": "Application/json",
+                              "Authorization": "Bearer "+token
+                            }
+                          }).then(() => router.refresh()), {
+                            loading: 'Loading...',
+                            success: () => {
+                              return `${post.postId} has been precovery`;
+                            },
+                            error: "Error delete data"
+                          })
+                        }}
+                      >
+                        Recovery
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          toast.promise(axios.put("/api/protected/post/permanent/delete", [post.postId], {
+                            headers: {
+                              "Content-Type": "Application/json",
+                              "Authorization": "Bearer "+token
+                            }
+                          }).then(() => router.refresh()), {
+                            loading: 'Loading...',
+                            success: () => {
+                              return `${post.postId} has been permanent deleted`;
+                            },
+                            error: "Error delete data"
+                          })
+                        }}
+                      >
+                        Permanent Delete
+                      </DropdownMenuItem>
+                    </div>
+                  )
+                }
+                
               </DropdownMenuContent>
             </DropdownMenu>
             <AlertDialogContent>

@@ -8,77 +8,23 @@ import { z } from "zod";
 import argon2 from "argon2"
 import { addMonths, startOfMonth } from "date-fns";
 import { generateUniqueId } from "@/lib/generateId";
+import { ZodUser } from "@/lib/allZodSchema";
+import { ApiResponse, ErrorZod } from "@/lib/types";
 
-const userSchema = z.object({
-    username: z.string().min(4, { message: "The username must be more than 4 characters" }).max(110, { message: "The username must not exceed 110 characters" }).superRefine(async (value: string, ctx) => {
-        const username: number = await prisma.user.count({
-            where: { username: value }
-        })
+const { createUserSchema: userSchema, updateUserSchema } = new ZodUser()
 
-        if (username > 0){
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "The username already taken",
-                path: ["username"]
-            })
-        }
-    }),
-    email: z.string().email({ message: "invalid email addredd" }).max(80, { message: "The email must not exceed 80 characters" }).superRefine(async (value: string, ctx) => {
-        const email: number = await prisma.user.count({
-            where: { email: value }
-        })
-
-        if (email > 0){
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "The email already taken",
-                path: ["email"]
-            })
-        }
-    }),
-    password: z.string().min(8, { message: "The password must be at least 8 charcaters long" })
-        .regex(/[A-Z]/, { message: "The password must contain at least one uppercase letter" })
-        .regex(/[0-9]/, { message: "The password must contain at least one number" }),
-    role: z.enum([ "USER", "ADMIN" ]),
-
-})
 type UserTypeBody = z.infer<typeof userSchema>
 
-const updateUserSchema = z.object({
-    username: z.string().min(4, { message: "The username must be more than 4 characters" }).max(110, { message: "The username must not exceed 110 characters" }).superRefine(async (value: string, ctx) => {
-        const username: number = await prisma.user.count({
-            where: { username: value }
-        })
-
-        if (username > 0){
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "The username already taken",
-                path: ["username"]
-            })
-        }
-    }),
-    email: z.string().email({ message: "invalid email addredd" }).max(80, { message: "The email must not exceed 80 characters" }).superRefine(async (value: string, ctx) => {
-        const email: number = await prisma.user.count({
-            where: { email: value }
-        })
-
-        if (email > 0){
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "The email already taken",
-                path: ["email"]
-            })
-        }
-    }),
-    password: z.string().min(8, { message: "The password must be at least 8 charcaters long" })
-        .regex(/[A-Z]/, { message: "The password must contain at least one uppercase letter" })
-        .regex(/[0-9]/, { message: "The password must contain at least one number" }),
-    role: z.enum([ "USER", "ADMIN" ]),
-})
 type UpdateUserTypeBody = z.infer<typeof updateUserSchema>
 
-export async function POST(request: NextRequest) {
+/**
+ *
+ *
+ * @export
+ * @param {NextRequest} request
+ * @return {*}  {(Promise<NextResponse<ApiResponse<User | ErrorZod[]>>>)}
+ */
+export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse<User | ErrorZod[]>>> {
     try {
         const token: string | null | undefined = request.cookies.get("token")?.value || request.headers.get("Authorization")?.split(' ')[1]
         const payload: JWTVerifyResult<CustomJWTPayload> | TokenError = await verifyToken(token || "token")
@@ -123,7 +69,8 @@ export async function POST(request: NextRequest) {
                 where: { userId: response.userId },
                 data: {
                     uniqueId: id
-                }
+                },
+                omit: { password: true, otp: true }
             })
             return NextResponse.json({
                 message: "Success crete data",
@@ -132,18 +79,30 @@ export async function POST(request: NextRequest) {
             }, { status: 200 })
         } else {
             return NextResponse.json({
-                messae: "Access not granted",
+                message: "Access not granted",
                 error: true
             }, { status: 501 })
         }
     } catch (error) {
+        if(error instanceof z.ZodError) {
+            const errorMessage = error.issues.map(err => ({
+                path: err.path.join('.'),
+                message: err.message
+            }))
+
+            return NextResponse.json({
+                message: "Error Validating",
+                data: errorMessage,
+                error: true,
+            }, { status: 200 })
+        }
         if(error instanceof Error) {
+            logger.error("Error api: ", error)
             return NextResponse.json({
                 message: error?.message || `Error: ${error}`,
                 error: true
             }, { status: 500 } )
         }
-        logger.error("unknown error", error)
         return NextResponse.json({
             message: "Unknown error, please report to admin or customer service, time error: " + new Date().getTime(),
             error: true
@@ -151,7 +110,15 @@ export async function POST(request: NextRequest) {
     }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ userId : string }>} ) {
+/**
+ *
+ *
+ * @export
+ * @param {NextRequest} request
+ * @param {{ params: Promise<{ userId : string }>}} { params }
+ * @return {*}  {(Promise<NextResponse<ApiResponse<User | ErrorZod[]>>>)}
+ */
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ userId : string }>} ): Promise<NextResponse<ApiResponse<User | ErrorZod[]>>> {
     try {
         const { userId } = await params
         if(isNaN(Number(userId)) || userId == null) { 
@@ -174,7 +141,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
                     email: validatedData.email,
                     username: validatedData.username,
                     role: validatedData.role
-                }
+                },
+                omit: { password: true, otp: true }
             })
             return NextResponse.json({
                 message: `Success update data with userId=${userId}`,
@@ -183,11 +151,23 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             })
         } else {
             return NextResponse.json({
-                messae: "Access not granted",
+                message: "Access not granted",
                 error: true
             }, { status: 501 })
         }
     } catch (error) {
+        if(error instanceof z.ZodError) {
+            const errorMessage = error.issues.map(err => ({
+                path: err.path.join('.'),
+                message: err.message
+            }))
+
+            return NextResponse.json({
+                message: "Error Validating",
+                data: errorMessage,
+                error: true,
+            }, { status: 200 })
+        }
         if(error instanceof Error) {
             return NextResponse.json({
                 message: error?.message || `Error: ${error}`,
@@ -202,10 +182,18 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ userId : string }>} ) {
+/**
+ *
+ *
+ * @export
+ * @param {NextRequest} request
+ * @param {{ params: Promise<{ userId : string }>}} { params }
+ * @return {*}  {(Promise<NextResponse<ApiResponse<User | ErrorZod[]>>>)}
+ */
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ userId : string }>} ): Promise<NextResponse<ApiResponse<User | ErrorZod[]>>> {
     try {
-        const { userId } = await params
-        console.log(userId)
+        const param = await params
+        const userId = param.userId
         if(isNaN(Number(userId)) || userId == null) { 
             return NextResponse.json({
                 message: "Cannot sellectted data, params is not number or it's empty",
@@ -222,7 +210,8 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
                 where: { userId: Number(userId) },
                 data: {
                     isDeleted: true
-                }
+                },
+                omit: { password: true, otp: true }
             })
             return NextResponse.json({
                 message: `Success deleted data with userId=${userId}`,
@@ -231,11 +220,23 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
             })
         } else {
             return NextResponse.json({
-                messae: "Access not granted",
+                message: "Access not granted",
                 error: true
             }, { status: 501 })
         }
     } catch (error) {
+        if(error instanceof z.ZodError) {
+            const errorMessage = error.issues.map(err => ({
+                path: err.path.join('.'),
+                message: err.message
+            }))
+
+            return NextResponse.json({
+                message: "Error Validating",
+                data: errorMessage,
+                error: true,
+            }, { status: 200 })
+        }
         if(error instanceof Error) {
             return NextResponse.json({
                 message: error?.message || `Error: ${error}`,

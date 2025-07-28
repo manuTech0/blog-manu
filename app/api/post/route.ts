@@ -1,31 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma"
-import { Post } from "@/lib/generated/prisma";
 import { logger } from "@/lib/logger";
+import { ApiResponse, ApiWithPaginating, Post, User } from "@/lib/types";
 
-interface GetBody {
-    page: Number;
-    title: string;
-    content: string;
-    userId: number;
-    action: string;
-}
 
-export async function GET(request: NextRequest) {
+/**
+ *
+ *
+ * @export
+ * @param {NextRequest} request
+ * @return {*}  {Promise<NextResponse<ApiResponse<ApiWithPaginating<Post<User>[]>>>>}
+ */
+export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<ApiWithPaginating<Post<User>[]>>>> {
     try {
         const url: URL = new URL(request.url)
-        const page: Number = parseInt(url.searchParams.get("page") || "1", 2)
+        const page: number = parseInt(url.searchParams.get("page") || "1", 10)
         const post = await prisma.post.findMany({
-            where: { isDeleted: false },
-            skip: ((Number(page) - 1) * 15),
-            take: 10,
+            where: { 
+                isDeleted: false,
+                user: {
+                    isBanned: false,
+                },
+            },
+            skip: ((Number(page) - 1) * 12),
+            take: 12,
             include: {
                 user: {
-                    select: {
-                        userId: true,
-                        username: true,
-                        role: true,
+                    omit: {
+                        otp: false,
+                        password: false
                     }
+                }
+            }
+        })
+        const totalItems = await prisma.post.count({
+            where: {
+                isDeleted: false,
+                user: {
+                    isBanned: false,
                 }
             }
         })
@@ -35,9 +47,13 @@ export async function GET(request: NextRequest) {
                 error: true
             }, { status: 404 })
         }
+        const totalPage = Math.ceil(totalItems / 12)
         return NextResponse.json({
             message: `Success get data`,
-            data: post,
+            data: {
+                data: post,
+                totalPage: totalPage
+            },
             error: false
         })
     } catch (error) {

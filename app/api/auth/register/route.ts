@@ -1,51 +1,34 @@
+import { ZodAuth } from "@/lib/allZodSchema";
 import { User } from "@/lib/generated/prisma";
 import { generateUniqueId } from "@/lib/generateId";
+import { CustomJWTPayload, generateToken, isTokenError, TokenError } from "@/lib/jwt";
 import { logger } from "@/lib/logger";
 import prisma from "@/lib/prisma";
+import { ApiResponse, ErrorZod, GenerateTokenType } from "@/lib/types";
 import argon2 from "argon2";
 import { addMonths, startOfMonth } from "date-fns";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod"
 
-const bodySchema = z.object({
-    username: z.string().min(4, { message: "The username must be more than 4 characters" }).max(110, { message: "The username must not exceed 110 characters" }).superRefine(async (value: string, ctx) => {
-        const username: number = await prisma.user.count({
-            where: { username: value }
-        })
+const { regisSchema } = new ZodAuth()
 
-        if (username > 0){
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "The username already taken",
-                path: ["username"]
-            })
-        }
-    }),
-    email: z.string().email({ message: "invalid email addredd" }).max(80, { message: "The email must not exceed 80 characters" }).superRefine(async (value: string, ctx) => {
-        const email: number = await prisma.user.count({
-            where: { email: value }
-        })
+type RegisType = z.infer<typeof regisSchema>
 
-        if (email > 0){
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "The email already taken",
-                path: ["email"]
-            })
-        }
-    }),
-    password: z.string().min(8, { message: "The password must be at least 8 charcaters long" })
-        .regex(/[A-Z]/, { message: "The password must contain at least one uppercase letter" })
-        .regex(/[0-9]/, { message: "The password must contain at least one number" })
-})
 
-type BodyRegister = z.infer<typeof bodySchema>
 
-export async function POST(request: NextRequest) {
+
+/**
+ *
+ *
+ * @export
+ * @param {NextRequest} request
+ * @return {*}  {(Promise<NextResponse<ApiResponse<string | ErrorZod[]>>>)}
+ */
+export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse<string | ErrorZod[]>>> {
     try {
-        const body: BodyRegister = await request.json()
+        const body = await request.json()
 
-        const validatedData: BodyRegister = await bodySchema.parseAsync(body)
+        const validatedData: RegisType = await regisSchema.parseAsync(body)
 
         const hashedPassword: string = await argon2.hash(validatedData.password, { secret: Buffer.from(process.env.ARGON2_SECRET || "secret") })
 
@@ -82,19 +65,33 @@ export async function POST(request: NextRequest) {
             }
         })
 
-        return NextResponse.json({ 
-            message: "Success create user",
-            data: {
-                uniqueId: update.uniqueId,
-                email: update.email,
-                otp: update.otp,
-                role: update.role
-            },
-            error: false
-        }, { status: 200 })        
+        const payload: CustomJWTPayload = {
+            email: update.email,
+            role: update.role,
+            iss: process.env.API_URL || "my-blog.com",
+            sub: update.uniqueId || String(update.userId),
+            aud: update.username,
+            iat: new Date().getTime(),
+            jti: update.uniqueId || String(update.userId),
+            isverified: update.isVerified
+        }
+        const token: GenerateTokenType | TokenError = await generateToken(payload, "14d")
+        if(isTokenError(token)) {
+            return NextResponse.json({
+                message: "Error get token",
+                data: token,
+                error: true
+            }, { status: 401 })
+        } else {
+            return NextResponse.json({
+                message: "Success get token",
+                data: token,
+                error: false
+            }, { status: 200 })
+        }       
     } catch (error) {
         if(error instanceof z.ZodError) {
-            const errorMessage = error.errors.map(err => ({
+            const errorMessage: ErrorZod[] = error.issues.map(err => ({
                 path: err.path.join('.'),
                 message: err.message
             }))
@@ -106,11 +103,15 @@ export async function POST(request: NextRequest) {
             }, { status: 200 })
         }
         if(error instanceof Error) {
-            const errorReport = logger.error("Unknown error", error)
+            logger.error("Unknown error", error)
             return NextResponse.json({
                 message: "Unknown error, please report to admin or customer service, time error: " + new Date().getTime(),
                 error: true
             }, { status: 500 } )
         }
+        return NextResponse.json({
+            message: "Unknown error",
+            error: true
+        })
     }
 }

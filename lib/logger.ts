@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // lib/logger.ts — Edge-safe custom logger
 
 type LogLevel = 'info' | 'debug' | 'warn' | 'error';

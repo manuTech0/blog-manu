@@ -1,27 +1,39 @@
-import { z } from "zod";
+import { ClientZodPost, ClientZodUser } from "./allZodSchema";
 import { Role } from "./generated/prisma";
-import { unique } from "next/dist/build/utils";
+;
 
-export interface Post {
-  postId: number,
-  title: string,
-  content: string,
-  slug: string,
-  user: { userId: number, username: string, role: "USER" | "ADMIN" }
+export interface GenerateTokenType { 
+    access_token: string;
+    expires_in: string;
+    token_type: string;
 }
-export interface User {
-     userId: number;
-    username: string;
-    email: string;
-    uniqueId: string | null;
-    password: string;
-    otp: string | null;
-    role: Role;
-    createdAt: Date;
-    updateAt: Date;
-    isDeleted: boolean;
-    isVerified: boolean;
-    otpExp: Date | null;
+
+export interface Post<T = void> {
+  title: string;
+  content: string;
+  slug: string;
+  userId: number;
+  postId: number;
+  createdAt: Date;
+  updateAt: Date;
+  isDeleted: boolean;
+  user?: T
+}
+export interface User<T = void>{
+  userId: number;
+  createdAt: Date;
+  updateAt: Date;
+  isDeleted: boolean;
+  username: string;
+  email: string;
+  uniqueId: string | null;
+  password: string;
+  otp: string | null;
+  role: Role;
+  isVerified: boolean;
+  isBanned: boolean;
+  otpExp: Date | null;
+  post?: T
 }
 
 export type TriggerDialogForm = {
@@ -35,38 +47,72 @@ export type AdminState = {
     formMode: TriggerDialogForm,
     setFormMode: React.Dispatch<React.SetStateAction<TriggerDialogForm>>
 }
-export interface ApiPost {
-  message: string,
-  data?: Post[],
-  error: boolean
-}
-export interface ApiUsers {
-  message: string,
-  data?: User[],
-  error: boolean
+
+export interface ApiResponse<T = void> {
+  message: string;
+  data?: T | unknown;
+  error: boolean;
 }
 
-export const postSchema = z.object({
-    postId: z.number().optional(),
-    userId: z.number().min(1).optional(),
-    title: z.string().min(10).max(120),
-    content: z.string().min(30)
-})
-export const usersSchema = z.object({
-    userId: z.number().optional(),
-    username: z.string().min(3).max(110),
-    email: z.string().min(4).max(80),
-    password: z.string().min(8),
-    role: z.enum(["USER", "ADMIN"]),
-    isVerified: z.boolean()
-})
+const zodUser = new ClientZodUser()
+const zodPost = new ClientZodPost()
+
+const [usersSchema, postSchema] = [zodUser.createUserSchema, zodPost.createSchema]
+
 
 const formSchemaMap = {
   user: usersSchema,
-  post: postSchema
+  post: postSchema,
 } as const
 
 type DataType = keyof typeof formSchemaMap
-export function getFormSchema<T extends DataType>(dataType: T): typeof formSchemaMap[T] {
-  return formSchemaMap[dataType]
+export function getFormSchema<K extends DataType>(type: K): (typeof formSchemaMap)[K] {
+  return formSchemaMap[type]
+}
+
+
+export type TableMode = "trash" | "data"
+
+export interface ErrorZod {
+  path: string,
+  message: string
+}
+
+export interface GetBody {
+    page: number;
+    title: string;
+    content: string;
+    userId: number;
+    action: string;
+}
+export interface EmailSendResponse {
+    message: string;
+    error: boolean;
+    id?: string;
+    data?: object;
+    otp?: string;
+}
+
+export interface MyUserResponse {
+  message: string,
+  error: boolean,
+  data: {
+    username: string;
+    email: string;
+    uniqueId: string | null;
+    createdAt: Date;
+  }
+}
+export interface SlugifyOptions {
+    replacement?: string;
+    remove?: RegExp;
+    lower?: boolean;
+    strict?: boolean;
+    locale?: string;
+    trim?: boolean;
+}
+
+export interface ApiWithPaginating<T = void> {
+  data: T | unknown;
+  totalPage: number;
 }

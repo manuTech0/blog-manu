@@ -1,21 +1,21 @@
-import { Post } from "@/lib/generated/prisma";
+import { ApiResponse, User, Post } from '@/lib/types';
 import { logger } from "@/lib/logger";
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
-interface GetBody {
-    page: Number;
-    title: string;
-    content: string;
-    userId: number;
-    action: string;
-}
 
-export async function GET(request: NextRequest) {
+/**
+ *
+ *
+ * @export
+ * @param {NextRequest} request
+ * @return {*}  {Promise<NextResponse<ApiResponse<Post<User>>>>}
+ */
+export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<Post<User>>>> {
     try {
         const url: URL = new URL(request.url)
-        const page: Number = parseInt(url.searchParams.get("page") || "1", 2)
-        const post: Post[] = await prisma.post.findMany({
+        const page: number = parseInt(url.searchParams.get("page") || "1", 2)
+        const post = await prisma.post.findMany({
             where: { isDeleted: true },
             skip: ((Number(page) - 1) * 15),
             take: 10,

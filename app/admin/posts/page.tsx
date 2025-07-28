@@ -15,15 +15,18 @@ import dynamic from "next/dynamic";
 import slugify from "slugify";
 import Cookies from "js-cookie"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
-import { ApiPost, ApiUsers, getFormSchema, Post, User } from "@/lib/types";
+import { ApiResponse, getFormSchema, Post, User } from "@/lib/types";
 import { logger } from "@/lib/logger";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { ClientZodPost, ClientZodUser } from "@/lib/allZodSchema";
 
 
 export default function Posts() {
-  const [post, setPost] = React.useState<Post[]>([])
+  const [post, setPost] = React.useState<Post<User>[]>([])
   const [openDialog, setOpenDialog] = React.useState(false)
   const [loadingData, setLoadingData] = React.useState(false)
-  const [users, setUsers] = React.useState<User[]>([])
+  const [users, setUsers] = React.useState<User<Post>[]>([])
   const {formMode, setFormMode} = useAdminState()
 
   const token = Cookies.get("auth_token")
@@ -36,13 +39,13 @@ export default function Posts() {
             "Content-Type": "Application/json"
           }
         })
-        const data: ApiPost = response.data
-        if (data.error || !data.data) {
+        const data: ApiResponse<Post[]> = response.data
+        if (data.error || !data.data || !(data?.data as Post[])) {
           toast.error("Uh oh! Something went wrong.", {
             description: data.message
           })
         } else {
-          setPost(data.data)
+          setPost(data.data as Post<User>[])
         }
       } catch (error) {
         logger.error(error)
@@ -62,13 +65,13 @@ export default function Posts() {
             "Authorization": `Bearer ${token}` 
           }
         })
-        const data: ApiUsers = response.data
-        if (data.error || !data.data) {
+        const data: ApiResponse<User[]> = response.data
+        if (data.error || !data.data || !(data?.data as User[])) {
           toast.error("Uh oh! Something went wrong.", {
             description: data.message
           })
         } else {
-          setUsers(data.data)
+          setUsers(data.data as User<Post>[])
         }
       } catch (error) {
         logger.error(error)
@@ -85,13 +88,20 @@ export default function Posts() {
     }
   }, [formMode])
 
-  let formSchema: z.ZodType = getFormSchema(formMode.dataType)
+  const zodUser = new ClientZodUser()
+  const zodPost = new ClientZodPost()
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [usersSchema, postSchema] = [zodUser.createUserSchema, zodPost.createSchema]
+
+  const formSchema = getFormSchema(formMode.dataType) as typeof usersSchema | typeof postSchema
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: (formMode.mode == "edit") ? (formMode.data as Post).title : "",
       content: (formMode.mode == "edit") ? (formMode.data as Post).content : "",
-      postId: (formMode.mode == "edit") ? (formMode.data as Post).postId : undefined,
+      userId: (formMode.mode == "edit") ? (formMode.data as Post).userId : undefined,
     }
   })
   React.useEffect(() => {
@@ -108,7 +118,7 @@ export default function Posts() {
         form.reset({
           title: (formMode.data as Post).title,
           content: (formMode.data as Post).content,
-          postId: (formMode.data as Post).postId,
+          userId: (formMode.data as Post).userId,
         });
       }
     } else if (formMode.mode === "add") {
@@ -124,7 +134,7 @@ export default function Posts() {
         form.reset({
           title: "",
           content: "",
-          postId: undefined,
+          userId: undefined,
         });
       }
     }
@@ -133,7 +143,7 @@ export default function Posts() {
   const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false })
 
   function editSubmit(values: z.infer<typeof formSchema>) {
-    if(formMode.dataType == "user") {
+    if(formMode.dataType == "user" && "password" in values ) {
       const dataPromise = axios.put(`/api/protected/user/admin/${values.userId}/`, {
           username: values.username,
           email: values.email,
@@ -149,17 +159,17 @@ export default function Posts() {
       toast.promise(dataPromise, {
         loading: 'Loading...',
         success: (response) => {
-          const data: ApiUsers = response.data
+          const data: ApiResponse = response.data
           if(data.error || !data.data) {
             return "Uh oh! Something went wrong: " + data.message
           }
-          setUsers(data.data)
+          setUsers(data.data as User<Post>[])
           setOpenDialog(false)
           return "Post has been updated"
         },
-        error: 'Error',
+        error: "error"
       });
-    } else {
+    } else if("title" in values) {
       const slug = slugify(values.title, {
         lower: true,
         strict: true,
@@ -179,11 +189,11 @@ export default function Posts() {
       toast.promise(dataPromise, {
         loading: 'Loading...',
         success: (response) => {
-          const data: ApiPost = response.data
+          const data: ApiResponse = response.data
           if(data.error || !data.data) {
             return "Uh oh! Something went wrong: " + data.message
           }
-          setPost(data.data)
+          setPost(data.data as Post<User>[])
           setOpenDialog(false)
           return "Post has been updated"
         },
@@ -192,8 +202,8 @@ export default function Posts() {
     }
   }
   function addSubmit(values: z.infer<typeof formSchema>){
-    if(formMode.dataType == "user") {
-      const dataPromise = axios.post("/api/protected/admin/0/", {
+    if(formMode.dataType == "user" && "password" in values) {
+      const dataPromise = axios.post("/api/protected/user/admin/0/", {
           username: values.username,
           email: values.email,
           password: values.password,
@@ -208,19 +218,19 @@ export default function Posts() {
       toast.promise(dataPromise, {
         loading: 'Loading...',
         success: (response) => {
-          const data: ApiUsers = response.data
+          const data: ApiResponse = response.data
           if(data.error || !data.data) {
             return "Uh oh! Something went wrong: " + JSON.stringify(data.data)
           }
-          setUsers(data.data)
+          setUsers(data.data as User<Post>[])
           setOpenDialog(false)
           form.reset()
           return `Post has been added`;
         },
         error: 'Error',
       });
-    } else {
-      const dataPromise = axios.post("/api/protected/post/admin/0/", {
+    } else if("title" in values) {
+      const dataPromise = axios.post("/api/protected/post/0/", {
         title: values.title,
         content: values.content,
         userId: values.userId
@@ -233,11 +243,11 @@ export default function Posts() {
       toast.promise(dataPromise, {
         loading: 'Loading...',
         success: (response) => {
-          const data: ApiPost = response.data
+          const data: ApiResponse = response.data
           if(data.error || !data.data) {
             return "Uh oh! Something went wrong: " + JSON.stringify(data.data)
           }
-          setPost(data.data)
+          setPost(data.data as Post<User>[])
           setOpenDialog(false)
           form.reset()
           return `Post has been added`;
@@ -320,6 +330,8 @@ export default function Posts() {
                               </FormControl>
                               <SelectContent>
                                 {users.map(item => (
+                                  // TODO: Fix here
+                                  //  eslint-disable-next-line react/jsx-key
                                   <SelectItem value={String(item.userId)}>{item.username}</SelectItem>
                                 ))}
                               </SelectContent>
@@ -412,7 +424,16 @@ export default function Posts() {
                         <FormItem>
                           <FormLabel>OTP Verified</FormLabel>
                           <FormControl>
-                            {/* <Input {...field} type="radio"checke/> */}
+                            <RadioGroup 
+                              defaultValue="one"
+                              onChange={field.onChange}
+                              defaultChecked={formMode.mode == "edit" && field.value}
+                            >
+                              <div className="flex gap-3">
+                                <RadioGroupItem value="true" id="one" />
+                                <Label htmlFor="one">otp verify</Label>
+                              </div>
+                            </RadioGroup>
                           </FormControl>
                           <FormMessage />
                         </FormItem>

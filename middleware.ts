@@ -1,78 +1,128 @@
+import { MiddlewareConfig, NextRequest, NextResponse } from "next/server";
 import { NextURL } from "next/dist/server/web/next-url";
-import { NextRequest, NextResponse } from "next/server";
 import { CustomJWTPayload, isTokenError, TokenError, verifyToken } from "./lib/jwt";
-import { JWTPayload, JWTVerifyResult } from "jose";
-import { logger } from "./lib/logger";
- export async function middleware(request: NextRequest) {
-    const token: string | undefined = request.cookies.get('token')?.value || request.headers.get('Authorization')?.split(' ')[1]
-    const url: NextURL = request.nextUrl.clone()
+import { JWTVerifyResult } from "jose";
 
-    // if(url.pathname.startsWith("/api/protected") && !token) {
-    //     return NextResponse.json({
-    //         message: "Token not found"
-    //     }, { status: 401 })
-    // }
-    // if(url.pathname.startsWith("/api/protected/user/admin") && token) {
-    //     try {
-    //         const decode: JWTVerifyResult<CustomJWTPayload> | TokenError = await verifyToken(token)
-    //         if(isTokenError(decode)) {
-    //             return NextResponse.json(JSON.stringify(decode), { status: 401 })
-    //         }
-    //         if(decode.payload.role == 'ADMIN') {
-    //             return NextResponse.next()
-    //         } else {
-    //             return NextResponse.json({
-    //                 message: "Not access",
-    //                 error: true
-    //             }, { status: 401 })
-    //         }
-    //     } catch (error) {
-    //         logger.error("Unknown error", error)
-    //         return NextResponse.json({
-    //             message: "Unknown error, please report to admin or customer service, time error: " + new Date().getTime(),
-    //             error: true
-    //         }, { status: 500 } )
-    //     }
-    // }
-    // if(/*url.pathname.startsWith("/api/protected") && token*/ true) {
-    //     try {
-    //         const decode: JWTVerifyResult<CustomJWTPayload> | TokenError = await verifyToken(token)
-    //         if(isTokenError(decode)) {
-    //             return NextResponse.json(decode, { status: 401 })
-    //         }
-    //         return NextResponse.next()
-    //     } catch (error) {
-    //         logger.error("Unknown error", error)
-    //         return NextResponse.json({
-    //             message: "Unknown error, please report to admin or customer service, time error: " + new Date().getTime(),
-    //             error: true
-    //         }, { status: 500 } )
-    //     }
-    // }
-    // if(url.pathname.startsWith("/dashboard") && token) {
-    //     try {
-    //         const decode: JWTVerifyResult<CustomJWTPayload> | TokenError = await verifyToken(token)
-    //         if(isTokenError(decode)) {
-    //             return NextResponse.json(decode, { status: 401 })
-    //         }
-    //         if(true /*decode.payload.role == 'ADMIN' */) {
-    //             return NextResponse.next()
-    //         } else {
-    //             return NextResponse.json({
-    //                 message: "Not access",
-    //                 error: true
-    //             }, { status: 401 })
-    //         }
-    //     } catch (error) {
-    //         logger.error("Unknown error", error)
-    //         return NextResponse.json({
-    //             message: "Unknown error, please report to admin or customer service, time error: " + new Date().getTime(),
-    //             error: true
-    //         }, { status: 500 } )
-    //     }
-    // }
- }
+interface ErrorExtra {
+  type: "api" | "web";
+}
 
- export const config = {
-    matcher: ['/api/protected/:path', '/dashboard/:path', '/administrator/:path'] 
- }
+type AuthUrlErrorOptions = ErrorExtra & ErrorOptions;
+
+class AuthUrlError extends Error {
+  public type: "api" | "web";
+
+  constructor(message: string, options?: AuthUrlErrorOptions) {
+    super(message);
+    this.name = "AuthUrlError";
+    this.type = options?.type || "web";
+  }
+}
+
+function isPublicPath(pathname: string): boolean {
+  return ["/", "/login", "/register", "/otp", "/logout", "/notfound"].some(p =>
+    pathname.startsWith(p)
+  );
+}
+
+async function authUrl(
+  { pathname }: NextURL,
+  token: string | undefined,
+  request: NextRequest
+): Promise<NextResponse> {
+  try {
+    if (isPublicPath(pathname) && !token) {
+      return NextResponse.next();
+    }
+
+    if (!token) {
+      return NextResponse.redirect(new URL("/notfound", request.url));
+    }
+
+    const decode: JWTVerifyResult<CustomJWTPayload> | TokenError = await verifyToken(token);
+
+    if (isTokenError(decode)) {
+      if (isPublicPath(pathname)) {
+        return NextResponse.next();
+      } else {
+        throw new AuthUrlError("Auth error: " + decode.message, { type: "web" });
+      }
+    }
+
+    const { role, isverified } = decode.payload;
+    const isAdmin = role === "ADMIN";
+    const isUser = role === "USER";
+
+    if (pathname.startsWith("/api/protected")) {
+      if ((isAdmin || isUser) && isverified) return NextResponse.next();
+      return NextResponse.redirect(new URL("/otp", request.url));
+    }
+
+    if (pathname.startsWith("/api/protected/user/admin")) {
+      if (isAdmin && isverified) return NextResponse.next();
+      return NextResponse.redirect(new URL("/otp", request.url));
+    }
+
+    if (pathname.startsWith("/admin")) {
+      if (isAdmin && isverified) return NextResponse.next();
+      return NextResponse.redirect(new URL("/otp", request.url));
+    }
+    if (pathname.startsWith("/dashboard")) {
+      if(isverified && (isUser || isAdmin)) return NextResponse.next()
+      return NextResponse.redirect(new URL("/notfound", request.url))
+    }
+
+    if (pathname.startsWith("/otp")) {
+      if (isverified) {
+        return NextResponse.redirect(new URL(isAdmin ? "/admin" : "/dashboard", request.url));
+      }
+      return NextResponse.next();
+    }
+
+    if (pathname.startsWith("/login") || pathname.startsWith("/register")) {
+      if (isverified) {
+        return NextResponse.redirect(new URL(isAdmin ? "/admin" : "/dashboard", request.url));
+      } else {
+        return NextResponse.redirect(new URL("/otp", request.url));
+      }
+    }
+
+    if (pathname.startsWith("/logout")) {
+      return NextResponse.next()
+    }
+
+    return NextResponse.redirect(new URL("/notfound", request.url));
+
+  } catch (error) {
+    if (error instanceof AuthUrlError) {
+      if (error.type === "api") {
+        return NextResponse.json({ message: error.message }, { status: 401 });
+      } else {
+        return NextResponse.redirect(new URL("/notfound", request.url));
+      }
+    }
+
+    console.error("Unhandled middleware error:", error);
+    return NextResponse.redirect(new URL("/notfound", request.url));
+  }
+}
+
+export async function middleware(request: NextRequest) {
+  const token =
+    request.cookies.get("token")?.value || request.headers.get("Authorization")?.split(" ")[1];
+  const url = request.nextUrl.clone();
+  return authUrl(url, token, request);
+}
+
+export const config: MiddlewareConfig = {
+  matcher: [
+    "/login",
+    "/register",
+    "/otp",
+    "/logout",
+    "/dashboard/:path*",
+    "/admin/:path*",
+    "/api/protected/:path*",
+  ],
+  
+};

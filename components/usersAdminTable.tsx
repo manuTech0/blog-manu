@@ -13,7 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronDown, MoreHorizontal, RefreshCcwIcon } from "lucide-react"
+import { ChevronDown, MoreHorizontal, RefreshCcwIcon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -40,15 +40,16 @@ import axios from "axios"
 import { AlertDialog, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog"
 import { AlertDialogAction, AlertDialogCancel, AlertDialogDescription, AlertDialogTrigger } from "@radix-ui/react-alert-dialog"
 import { useRouter } from "next/navigation"
-import type { TriggerDialogForm, User } from "../lib/types"
+import type { TableMode, TriggerDialogForm, User } from "../lib/types"
 import { Skeleton } from "./ui/skeleton"
 
 export function UsersAdminTable({
-  data, triggerDialogForm, isLoading
+  data, triggerDialogForm, isLoading, tableMode = "data"
 }: { 
   data: User[],
   triggerDialogForm: React.Dispatch<React.SetStateAction<TriggerDialogForm>>,
-  isLoading: boolean
+  isLoading: boolean,
+  tableMode?: TableMode
 }) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -150,21 +151,66 @@ export function UsersAdminTable({
                   Copy email
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => triggerDialogForm({
-                    mode: "edit",
-                    dataType: "user",
-                    dialog: true,
-                    data: user
-                  })}
-                >
-                  Edit
-                </DropdownMenuItem>
-                <AlertDialogTrigger asChild>
-                  <DropdownMenuItem>
-                    Delete
-                  </DropdownMenuItem>
-                </AlertDialogTrigger>
+                {
+                  (tableMode == "data") ? (
+                    <div>
+                      <DropdownMenuItem
+                        onClick={() => triggerDialogForm({
+                          mode: "edit",
+                          dataType: "user",
+                          dialog: true,
+                          data: user
+                        })}
+                      >
+                        Edit
+                      </DropdownMenuItem>
+                      <AlertDialogTrigger asChild>
+                        <DropdownMenuItem>
+                          Delete
+                        </DropdownMenuItem>
+                      </AlertDialogTrigger>
+                    </div>
+                  ) : (
+                    <div>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          toast.promise(axios.put("/api/protected/user/admin/permanent/recovery", [user.userId], {
+                            headers: {
+                              "Content-Type": "Application/json",
+                              "Authorization": "Bearer "+token
+                            }
+                          }).then(() => router.refresh()), {
+                            loading: 'Loading...',
+                            success: () => {
+                              return `${user.userId} has been precovery`;
+                            },
+                            error: "Error delete data"
+                          })
+                        }}
+                      >
+                        Recovery
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          toast.promise(axios.put("/api/protected/user/admin/permanent/delete", [user.userId], {
+                            headers: {
+                              "Content-Type": "Application/json",
+                              "Authorization": "Bearer "+token
+                            }
+                          }).then(() => router.refresh()), {
+                            loading: 'Loading...',
+                            success: () => {
+                              return `${user.userId} has been permanent deleted`;
+                            },
+                            error: "Error delete data"
+                          })
+                        }}
+                      >
+                        Permanent Delete
+                      </DropdownMenuItem>
+                    </div>
+                  )
+                }
               </DropdownMenuContent>
             </DropdownMenu>
             <AlertDialogContent>
@@ -184,7 +230,7 @@ export function UsersAdminTable({
                   }}).then(() => router.refresh()), {
                     loading: 'Loading...',
                     success: () => {
-                      return `${user.userId} has been added`;
+                      return `${user.userId} has been deleted`;
                     },
                     error: "Error delete data"
                   })
@@ -219,7 +265,7 @@ export function UsersAdminTable({
 
   return (
     <div className="w-full">
-      <div className="flex justify-content-beetwen py-4">
+      <div className="flex justify-content-between py-4">
         <Input
           placeholder="Filter username..."
           value={(table.getColumn("username")?.getFilterValue() as string) ?? ""}

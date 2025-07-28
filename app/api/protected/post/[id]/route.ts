@@ -1,4 +1,3 @@
-import { User } from "@/lib/generated/prisma";
 import { logger } from "@/lib/logger";
 import prisma from "@/lib/prisma";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
@@ -7,62 +6,31 @@ import { z } from "zod";
 import slugify from "slugify"
 import { CustomJWTPayload, isTokenError, TokenError, verifyToken } from "@/lib/jwt";
 import { JWTVerifyResult } from "jose";
+import { slugifyOptions } from "@/lib/utils";
+import { ZodPost } from "@/lib/allZodSchema";
+import { ApiResponse, ErrorZod, Post, User } from "@/lib/types";
 
-const CreateDataScheama = z.object({
-    userId: z.number().min(1),
-    title: z.string().min(10).max(120).superRefine(async (value: string | undefined, ctx) => {
-        const findSlugOfOtherPost = await prisma.post.findFirst({
-            where: { title: { contains: value } }
-        })
-        logger.debug(value, findSlugOfOtherPost)
-        if( !findSlugOfOtherPost || findSlugOfOtherPost == null ) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "Title already",
-                path: ["title"]
-            })
-        }
-    }),
-    content: z.string().min(30)
-})
+const { createSchema, updateSchema } = new ZodPost()
 
-type CreateData = z.infer<typeof CreateDataScheama>
-const UpdateDataScheama = z.object({
-    title: z.string().min(10).max(120).superRefine(async (value: string | undefined, ctx) => {
-        if(!value) return
-        const slug = slugify(value, {
-            lower: true,
-            strict: true,
-            locale:  "id",
-            trim: true,
-        })
-        const findSlugOfOtherPost = await prisma.post.findFirst({
-            where: { slug: slug }
-        })
-        if( !findSlugOfOtherPost ) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "Title already",
-                path: ["title"]
-            })
-        }
-    }).optional(),
-    content: z.string().min(30).optional(),
-    slug: z.string().min(1)
-})
+type CreateData = z.infer<typeof createSchema>
 
-type UpdateData = z.infer<typeof UpdateDataScheama>
+type UpdateData = z.infer<typeof updateSchema>
 
-export async function POST(request: NextRequest) {
+
+
+
+/**
+ *
+ *
+ * @export
+ * @param {NextRequest} request
+ * @return {*}  {(Promise<NextResponse<ApiResponse<Post<User> | ErrorZod>>>)}
+ */
+export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse<Post<User> | ErrorZod>>> {
     try {
         const body: CreateData = await request.json()
-        const validatedData = await CreateDataScheama.parseAsync(body)
-        const slug = slugify(validatedData.title ,{
-            lower: true,
-            strict: true,
-            locale:  "id",
-            trim: true,
-        })
+        const validatedData = await createSchema.parseAsync(body)
+        const slug = slugify(validatedData.title, slugifyOptions)
         const responseCreate = await prisma.post.create({
             data: {
                 userId: validatedData.userId,
@@ -71,17 +39,24 @@ export async function POST(request: NextRequest) {
                 slug: slug
             },
             include: {
-                user: true
+                user: {
+                    select: {
+                        username: true,
+                        email: true,
+                        createdAt: true,
+                        uniqueId: true,
+                    }
+                }
             }
         })
         return NextResponse.json({
-            messgae: "Success create data with data :",
+            message: "Success create data with data :",
             data: responseCreate,
             error: false
         }, { status: 200 })
     } catch (error) {
-        if(error instanceof z.ZodError) {
-            const errorMessage = error.errors.map(err => ({
+       if(error instanceof z.ZodError) {
+            const errorMessage: ErrorZod[] = error.issues.map(err => ({
                 path: err.path.join('.'),
                 message: err.message
             }))
@@ -91,7 +66,7 @@ export async function POST(request: NextRequest) {
                 data: errorMessage,
                 error: true,
             }, { status: 200 })
-        }
+        } 
         if(error instanceof PrismaClientKnownRequestError) {
             if(error.code == "P2025") {
                 return NextResponse.json({
@@ -101,18 +76,32 @@ export async function POST(request: NextRequest) {
             }
         }
         if(error instanceof Error) {
-            const errorReport = logger.error("Unknown error", error)
+            logger.error("Unknown error", error)
             return NextResponse.json({
                 message: "Unknown error, please report to admin or customer service, time error: " + new Date().getTime(),
                 error: true
             }, { status: 500 } )
         }
+        return NextResponse.json({
+            message: "Unknown error, please report to admin or customer service, time error: " + new Date().getTime(),
+            error: true
+        }, { status: 500 } )
     }
 }
-export async function PUT(request: NextResponse, { params }: { params: Promise<{ id: string }> }) {
+
+
+/**
+ *
+ *
+ * @export
+ * @param {NextResponse} request
+ * @param {{ params: Promise<{ id: string }> }} { params }
+ * @return {*}  {(Promise<NextResponse<ApiResponse<Post | ErrorZod[]>>>)}
+ */
+export async function PUT(request: NextResponse, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse<ApiResponse<Post | ErrorZod[]>>> {
     try {
         const body: UpdateData = await request.json()
-        const validatedData = await UpdateDataScheama.parseAsync(body)
+        const validatedData = await updateSchema.parseAsync(body)
         const { id } = await params
         if(isNaN(Number(id))) {
             return NextResponse.json({
@@ -139,12 +128,7 @@ export async function PUT(request: NextResponse, { params }: { params: Promise<{
         }
         let slug:  Awaited<ReturnType<typeof slugify>> | undefined = undefined
         if(validatedData.title) {
-             slug = slugify(validatedData.title , {
-                lower: true,
-                strict: true,
-                locale: "id",
-                trim: true
-            })
+             slug = slugify(validatedData.title , slugifyOptions)
         }
         const responseCreate = await prisma.post.update({
             where: { postId: Number(id) },
@@ -155,13 +139,13 @@ export async function PUT(request: NextResponse, { params }: { params: Promise<{
             }
         })
         return NextResponse.json({
-            messgae: "Success update data with data :",
+            message: "Success update data with data :",
             data: responseCreate,
             error: false
         }, { status: 200 })
     } catch (error) {
         if(error instanceof z.ZodError) {
-            const errorMessage = error.errors.map(err => ({
+            const errorMessage: ErrorZod[] = error.issues.map(err => ({
                 path: err.path.join('.'),
                 message: err.message
             }))
@@ -181,16 +165,29 @@ export async function PUT(request: NextResponse, { params }: { params: Promise<{
             }
         }
         if(error instanceof Error) {
-            const errorReport = logger.error("Unknown error", error)
+            logger.error("Unknown error", error)
             return NextResponse.json({
                 message: "Unknown error, please report to admin or customer service, time error: " + new Date().getTime(),
                 error: true
             }, { status: 500 } )
         }
+        return NextResponse.json({
+            message: "Unknown error, please report to admin or customer service, time error: " + new Date().getTime(),
+            error: true
+        }, { status: 500 } )
     }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+
+/**
+ *
+ *
+ * @export
+ * @param {NextRequest} request
+ * @param {{ params: Promise<{ id: string }> }} { params }
+ * @return {*}  {(Promise<NextResponse<ApiResponse<Post | ErrorZod[]>>>)}
+ */
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse<ApiResponse<Post | ErrorZod[]>>> {
     try {
         const { id } = await params
         if(isNaN(Number(id))) {
@@ -198,6 +195,23 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
                 message: "Parameter invalid",
                 error: true
             }, { status: 500 })
+        }
+        const getLastData = await prisma.post.findUnique({
+            where: { postId: Number(id) }
+        })
+        const token: string | null | undefined = request.cookies.get("token")?.value || request.headers.get("Authorization")?.split(' ')[1]
+        const payload: JWTVerifyResult<CustomJWTPayload> | TokenError = await verifyToken(token || "token")
+        if(isTokenError(payload)) {
+            return NextResponse.json(payload, { status: 501 })
+        }
+        const userInPayload = await prisma.user.findUnique({
+            where: { email: payload.payload.email }
+        })
+        if(!(payload.payload.role == "ADMIN" || userInPayload?.userId == getLastData?.userId)) {
+            return NextResponse.json({
+                message: "Access not granted",
+                error: true
+            }, { status: 501 })
         }
         const user = await prisma.post.findUnique({
             where: { postId: Number(id) }
@@ -215,13 +229,13 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
             }
         })
         return NextResponse.json({
-            messgae: "Success store data to trash with data :",
+            message: "Success store data to trash with data :",
             data: responseCreate,
             error: false
         }, { status: 200 })
     } catch (error) {
         if(error instanceof z.ZodError) {
-            const errorMessage = error.errors.map(err => ({
+            const errorMessage: ErrorZod[] = error.issues.map(err => ({
                 path: err.path.join('.'),
                 message: err.message
             }))
@@ -233,11 +247,15 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
             }, { status: 200 })
         }
         if(error instanceof Error) {
-            const errorReport = logger.error("Unknown error", error)
+            logger.error("Unknown error", error)
             return NextResponse.json({
                 message: "Unknown error, please report to admin or customer service, time error: " + new Date().getTime(),
                 error: true
             }, { status: 500 } )
         }
+        return NextResponse.json({
+            message: "Unknown error, please report to admin or customer service, time error: " + new Date().getTime(),
+            error: true
+        }, { status: 500 } )
     }
 }

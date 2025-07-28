@@ -1,17 +1,14 @@
 import { importPKCS8, importSPKI, JWTPayload, jwtVerify, JWTVerifyResult, SignJWT } from "jose";
 import { JOSEAlgNotAllowed, JWSSignatureVerificationFailed, JWTExpired, JWTInvalid } from "jose/errors";
 import { logger } from "./logger";
+import { GenerateTokenType } from "./types";
 
 export interface TokenError{
     error: boolean;
     message: string;
 }
 
-export interface GenerateTokenType { 
-    access_token: Base64URLString;
-    expires_in: string;
-    token_type: string;
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function isTokenError(token: any): token is TokenError {
     return (
         token &&
@@ -24,6 +21,7 @@ export function isTokenError(token: any): token is TokenError {
 interface Payload {
     email: string;
     role: "USER" | "ADMIN";
+    isverified: boolean;
 }
 export type CustomJWTPayload = JWTPayload & Payload
 
@@ -63,7 +61,7 @@ export async function generateToken(payload: CustomJWTPayload, expiresIn: string
     }
 }
 
-export async function verifyToken(token: Base64URLString): Promise< JWTVerifyResult<CustomJWTPayload> | TokenError> {
+export async function verifyToken(token: string): Promise< JWTVerifyResult<CustomJWTPayload> | TokenError> {
     try {
         const realToken: string = Buffer.from(token, "base64url").toString("utf8")
         const decoded: JWTVerifyResult<CustomJWTPayload> = await jwtVerify(realToken, publicKey, {

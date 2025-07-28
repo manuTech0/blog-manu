@@ -8,7 +8,6 @@ const withAnalyzer = withBundleAnalyzer({
 
 const nextConfig: NextConfig = {
   /* config options here */
-  reactStrictMode: true,
 
 };
 

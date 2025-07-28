@@ -34,6 +34,7 @@ model User {
   updateAt   DateTime  @updatedAt
   isDeleted  Boolean   @default(false)
   isVerified Boolean   @default(false)
+  isBanned   Boolean   @default(false)
   otpExp     DateTime?
   post       Post[]
 }

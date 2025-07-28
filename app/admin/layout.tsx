@@ -4,6 +4,12 @@ import { AppSidebar } from "@/components/sidebar"
 import "../globals.css"
 import { Toaster } from "@/components/ui/sonner";
 import { AdminStateProvider } from "@/components/adminStateProvider";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Admin page"
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     return (
         <AdminStateProvider>

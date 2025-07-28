@@ -1,37 +1,30 @@
 import prisma from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { z, ZodError } from "zod"
+import { z } from "zod"
 import argon2 from "argon2"
 import { User } from "@/lib/generated/prisma";
-import { CustomJWTPayload, GenerateTokenType, generateToken, TokenError, isTokenError } from "@/lib/jwt";
+import { CustomJWTPayload, generateToken, TokenError, isTokenError } from "@/lib/jwt";
 import { logger } from "@/lib/logger";
+import { ApiResponse, ErrorZod, GenerateTokenType } from "@/lib/types";
+import { ZodAuth } from "@/lib/allZodSchema";
 
-const BodySchema = z.object({
-    email: z.string().email({ message: "invalid email addredd" }).max(80, { message: "The email must not exceed 80 characters" }).superRefine(async (value: string, ctx) => {
-        const email: number = await prisma.user.count({
-            where: { email: value }
-        })
+const { loginSchema } = new ZodAuth()
 
-        if (email < 0){
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "The email was not found",
-                path: ["email"]
-            })
-        }
-    }),
-    password: z.string().min(8, { message: "The password must be at least 8 charcaters long" })
-        .regex(/[A-Z]/, { message: "The password must contain at least one uppercase letter" })
-        .regex(/[0-9]/, { message: "The password must contain at least one number" })
-})
 
-type Body = z.infer<typeof BodySchema>
 
-export async function POST(request: NextRequest) {
+
+/**
+ *
+ *
+ * @export
+ * @param {NextRequest} request
+ * @return {*}  {(Promise<NextResponse<ApiResponse<string | ErrorZod[]>>>)}
+ */
+export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse<string | ErrorZod[]>>>  {
     try {
         const body: Body = await request.json()
 
-        const validatedData = await BodySchema.parseAsync(body)
+        const validatedData = await loginSchema.parseAsync(body)
 
         const user: User | null = await prisma.user.findUnique({ where: { email: validatedData.email } })
 
@@ -39,7 +32,6 @@ export async function POST(request: NextRequest) {
             const verify: boolean = await argon2.verify(user.password, validatedData.password, {
                 secret: Buffer.from(process.env.ARGON2_SECRET || "secret")
             })
-
             if(user && verify) {
                 const payload: CustomJWTPayload = {
                     email: user.email,
@@ -48,7 +40,8 @@ export async function POST(request: NextRequest) {
                     sub: user.uniqueId || String(user.userId),
                     aud: user.username,
                     iat: new Date().getTime(),
-                    jti: user.uniqueId || String(user.userId)
+                    jti: user.uniqueId || String(user.userId),
+                    isverified: user.isVerified
                 }
                 const token: GenerateTokenType | TokenError = await generateToken(payload, "14d")
                 if(isTokenError(token)) {
@@ -77,10 +70,9 @@ export async function POST(request: NextRequest) {
             }, { status: 401 })
 
         }
-
     } catch (error) {
         if(error instanceof z.ZodError) {
-            const errorMessage = error.errors.map(err => ({
+            const errorMessage: ErrorZod[] = error.issues.map(err => ({
                 path: err.path.join('.'),
                 message: err.message
             }))
@@ -89,14 +81,18 @@ export async function POST(request: NextRequest) {
                 message: "Error Validating: ",
                 data: errorMessage,
                 error: true
-            }, { status: 400 } )
+            }, { status: 405 } )
         }
         if(error instanceof Error) {
-            const errorReport = logger.error("Unknown error", error)
+            logger.error("Unknown error", error)
             return NextResponse.json({
                 message: "Unknown error, please report to admin or customer service, time error: " + new Date().getTime(),
                 error: true
             }, { status: 500 } )
         }
+        return NextResponse.json({
+            message: "Unknown error",
+            error: true
+        })
     }
 }

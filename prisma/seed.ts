@@ -6,11 +6,15 @@ import argon2 from "argon2";
 import { nanoid } from "nanoid";
 import { Prisma } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
+import { CustomJWTPayload, generateToken, isTokenError, TokenError, verifyToken } from "@/lib/jwt";
+import { JWTVerifyResult } from "jose";
 
 async function main() {
   try {
     // Create Admin Account (upsert untuk mencegah error)
-    const passwordAdmin = await argon2.hash("admin12345678");
+    const passwordAdmin = await argon2.hash("admin12345678", {
+      secret: Buffer.from(process.env.ARGON2_SECRET || "secret")
+    });
     const admin = await prisma.user.upsert({
       where: { username: "admin" },
       update: {},
@@ -27,14 +31,24 @@ async function main() {
     logger.info("✅ Admin created:", {
       username: "admin",
       email: "admin@admin.com",
-      password: "admin12345678",
+      password: "Admin123456^&^8",
     });
 
+    const jwtAdmin = await generateToken({
+      email: admin.email,
+      role: "ADMIN",
+    }, "20 years")
+    if(isTokenError(jwtAdmin)) {
+        logger.error(jwtAdmin)
+    }
+    logger.info("Your jwt token: ",jwtAdmin)
     // Seed users
     for (let i = 0; i < 5; ) {
       const username = faker.internet.userName() + "_" + nanoid(5);
       const email = faker.internet.email().split("@")[0] + "+" + nanoid(5) + "@example.com";
-      const password = await argon2.hash(username + "1234");
+      const password = await argon2.hash(username + "1234", {
+        secret: Buffer.from(process.env.ARGON2_SECRET || "secret")
+      });
 
       try {
         const user = await prisma.user.create({

@@ -14,14 +14,18 @@ import { Input } from "@/components/ui/input";
 import dynamic from "next/dynamic";
 import Cookies from "js-cookie"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ApiPost, ApiUsers, getFormSchema, Post, User } from "@/lib/types";
+import { ApiResponse, getFormSchema, Post, User } from "@/lib/types";
 import slugify from "slugify";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { ClientZodPost, ClientZodUser  } from "@/lib/allZodSchema";
 
 
 export default function Users() {
   const [openDialog, setOpenDialog] = React.useState(false)
   const [loadingData, setLoadingData] = React.useState(false)
   const [users, setUsers] = React.useState<User[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_, setPost] = React.useState<Post[]>([])
   const {formMode, setFormMode} = useAdminState()
 
@@ -36,16 +40,16 @@ export default function Users() {
             "Authorization": `Bearer ${token}` 
           }
         })
-        const data: ApiUsers = response.data
+        const data: ApiResponse = response.data
         if (data.error || !data.data) {
           toast.error("Uh oh! Something went wrong.", {
             description: data.message
           })
         } else {
-          setUsers(data.data)
+          setUsers(data.data as User[])
         }
       } catch (error) {
-        toast.error("Failed to fetch posts.")
+        toast.error("Failed to fetch posts. \n" + error)
       } finally {
         setLoadingData(false)
       }
@@ -58,7 +62,14 @@ export default function Users() {
     }
   }, [formMode])
 
-  let formSchema: z.ZodType = getFormSchema(formMode.dataType)
+  const zodUser = new ClientZodUser()
+  const zodPost = new ClientZodPost()
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [usersSchema, postSchema] = [zodUser.createUserSchema, zodPost.createSchema]
+
+
+  const formSchema = getFormSchema(formMode.dataType) as typeof usersSchema | typeof postSchema
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -108,7 +119,7 @@ export default function Users() {
   const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false })
 
   function editSubmit(values: z.infer<typeof formSchema>) {
-    if(formMode.dataType == "user") {
+    if(formMode.dataType == "user" && "password" in values) {
       const dataPromise = axios.put(`/api/protected/user/admin/${values.userId}/`, {
           username: values.username,
           email: values.email,
@@ -124,17 +135,17 @@ export default function Users() {
       toast.promise(dataPromise, {
         loading: 'Loading...',
         success: (response) => {
-          const data: ApiUsers = response.data
+          const data: ApiResponse = response.data
           if(data.error || !data.data) {
             return "Uh oh! Something went wrong: " + data.message
           }
-          setUsers(data.data)
+          setUsers(data.data as User[])
           setOpenDialog(false)
           return "Post has been updated"
         },
         error: 'Error',
       });
-    } else {
+    } else if("title" in values) {
       const slug = slugify(values.title, {
         lower: true,
         strict: true,
@@ -154,11 +165,11 @@ export default function Users() {
       toast.promise(dataPromise, {
         loading: 'Loading...',
         success: (response) => {
-          const data: ApiPost = response.data
+          const data: ApiResponse = response.data
           if(data.error || !data.data) {
             return "Uh oh! Something went wrong: " + data.message
           }
-          setPost(data.data)
+          setPost(data.data as Post[])
           setOpenDialog(false)
           return "Post has been updated"
         },
@@ -167,7 +178,7 @@ export default function Users() {
     }
   }
   function addSubmit(values: z.infer<typeof formSchema>){
-    if(formMode.dataType == "user") {
+    if(formMode.dataType == "user" && "password" in values) {
       const dataPromise = axios.post("/api/protected/user/admin/0/", {
           username: values.username,
           email: values.email,
@@ -183,18 +194,18 @@ export default function Users() {
       toast.promise(dataPromise, {
         loading: 'Loading...',
         success: (response) => {
-          const data: ApiUsers = response.data
+          const data: ApiResponse = response.data
           if(data.error || !data.data) {
             return "Uh oh! Something went wrong: " + JSON.stringify(data.data)
           }
-          setUsers(data.data)
+          setUsers(data.data as User[])
           setOpenDialog(false)
           form.reset()
           return `Post has been added`;
         },
         error: 'Error',
       });
-    } else {
+    } else if("title" in values) {
       const dataPromise = axios.post("/api/protected/post/0/", {
         title: values.title,
         content: values.content,
@@ -208,11 +219,11 @@ export default function Users() {
       toast.promise(dataPromise, {
         loading: 'Loading...',
         success: (response) => {
-          const data: ApiPost = response.data
+          const data: ApiResponse = response.data
           if(data.error || !data.data) {
             return "Uh oh! Something went wrong: " + JSON.stringify(data.data)
           }
-          setPost(data.data)
+          setPost(data.data as Post[])
           setOpenDialog(false)
           form.reset()
           return `Post has been added`;
@@ -323,7 +334,16 @@ export default function Users() {
                         <FormItem>
                           <FormLabel>OTP Verified</FormLabel>
                           <FormControl>
-                            {/* <Input {...field} type="radio"checke/> */}
+                            <RadioGroup 
+                              defaultValue="one"
+                              onChange={field.onChange}
+                              defaultChecked={formMode.mode == "edit" && field.value}
+                            >
+                              <div className="flex gap-3">
+                                <RadioGroupItem value="true" id="one" />
+                                <Label htmlFor="one">otp verify</Label>
+                              </div>
+                            </RadioGroup>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -384,6 +404,7 @@ export default function Users() {
                               </FormControl>
                               <SelectContent>
                                 {users.map(item => (
+                                  // eslint-disable-next-line react/jsx-key
                                   <SelectItem value={String(item.userId)}>{item.username}</SelectItem>
                                 ))}
                               </SelectContent>

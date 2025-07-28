@@ -1,19 +1,38 @@
-import { User } from "@/lib/generated/prisma";
 import { logger } from "@/lib/logger";
 import prisma from "@/lib/prisma";
+import { ApiResponse, Post, User } from "@/lib/types";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
+
+/**
+ *
+ *
+ * @export
+ * @param {NextRequest} request
+ * @return {*}  {Promise<NextResponse<ApiResponse<User<Post>>>>}
+ */
+export async function GET(request: NextRequest): Promise<NextResponse<ApiResponse<User<Post>>>> {
     try {
         const url: URL = new URL(request.url)
         const page: number = parseInt(url.searchParams.get("page") || '1', 2)
-        const user: User[] = await prisma.user.findMany({
-            where: { isDeleted: false },
+        const user = await prisma.user.findMany({
+            where: {
+                isDeleted: false,
+            },
             skip: (page - 1) * 15,
             take: 15,
-            include: {
-                post: true
-            },
+            select: {
+                userId: true,
+                username: true,
+                email: true,
+                uniqueId: true,
+                role: true,
+                isVerified: true,
+                isBanned: true,
+                createdAt: true,
+                updateAt: true,
+                post: true,
+            }
         })
         if(user.length == 0 || user == null) {
             return NextResponse.json({
@@ -38,6 +57,6 @@ export async function GET(request: NextRequest) {
             message: "Unknown error, please report to admin or customer service, time error: " + new Date().getTime(),
             error: true
         }, { status: 500 } )
- 
+
     }
 }

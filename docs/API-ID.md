@@ -220,7 +220,7 @@ List post yang sudah dihapus (soft delete).
 
 ---
 
-### ❌ `DELETE /api/protected/post/permanent/delete`
+### ❌ `PUT /api/protected/post/permanent/delete`
 
 Hapus permanen daftar post berdasarkan ID.
 
@@ -232,7 +232,7 @@ Hapus permanen daftar post berdasarkan ID.
 
 ---
 
-### ♻️ `DELETE /api/protected/post/permanent/recovery`
+### ♻️ `PUT /api/protected/post/permanent/recovery`
 
 Mengembalikan post dari tempat sampah (ubah `isDeleted: false`).
 
@@ -289,9 +289,21 @@ List user yang sudah dihapus (untuk admin).
 
 ---
 
-### ❌ `DELETE /api/protected/user/admin/permanent`
+### ❌ `PUT /api/protected/user/permanent/delete`
 
-Hapus permanen user berdasarkan ID.
+Hapus permanen daftar user berdasarkan ID.
+
+#### Request Body
+
+```json
+[1, 2, 3]
+```
+
+---
+
+### ♻️ `PUT /api/protected/user/permanent/recovery`
+
+Mengembalikan user dari tempat sampah (ubah `isDeleted: false`).
 
 #### Request Body
 

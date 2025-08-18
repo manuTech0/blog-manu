@@ -1,20 +1,33 @@
-# Gunakan Bun official image
-FROM oven/bun:1.1.13 as base
+FROM oven/bun:1 AS base
 
-# Set working directory
+# Install PostgreSQL server
+RUN apt-get update && \
+    apt-get install -y postgresql postgresql-contrib && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set working dir
 WORKDIR /app
 
-# Salin package.json, bun.lockb, dan file env agar bisa cache dependencies
-COPY bun.lockb package.json ./
+# Copy dependency file
+COPY package.json bun.lockb* ./
 
 # Install dependencies
 RUN bun install
 
-# Salin semua file project ke dalam container
+# Copy seluruh project
 COPY . .
 
-# Build aplikasi Next.js (jika menggunakan app dir, bun akan tahu)
+# Build Next.js
 RUN bun run build
 
-# Jalankan server Next.js
-CMD ["bun", "run", "start"]
+# Buat data folder untuk PostgreSQL
+RUN mkdir -p /var/lib/postgresql/data && chown -R postgres:postgres /var/lib/postgresql
+
+# Expose port Next.js dan PostgreSQL
+EXPOSE 3000 5432
+
+# Script entrypoint untuk menjalankan PostgreSQL & Next.js
+CMD service postgresql start && \
+    su postgres -c "psql -c \"CREATE USER nextjs WITH PASSWORD 'password';\"" && \
+    su postgres -c "psql -c \"CREATE DATABASE nextjsdb OWNER nextjs;\"" && \
+    bun start

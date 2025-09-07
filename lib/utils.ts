@@ -3,7 +3,7 @@ import { ErrorZod, SlugifyOptions } from '@/lib/types';
 import * as iso8601 from 'iso8601-duration';
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import ms from 'ms';
+import ms, { StringValue } from 'ms';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -15,7 +15,7 @@ export function durationToUnix(duration: string): number {
   const now = Date.now();
 
   try {
-    const msVal = ms(duration);
+    const msVal: number = ms(duration as StringValue);
     if (typeof msVal === 'number') {
       return Math.floor((now + msVal) / 1000); 
     }

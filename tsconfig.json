@@ -13,6 +13,7 @@
     "typeRoots": ["./types", "./node_modules/@types"],
     "isolatedModules": true,
     "jsx": "preserve",
+    "skipDefaultLibCheck": true,
     "incremental": true,
     "plugins": [
       {
@@ -24,5 +25,5 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "types/**/*.d.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", ".next", "components/ui", "lib/generated"]
 }

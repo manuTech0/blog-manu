@@ -121,6 +121,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ userId : string }>} ): Promise<NextResponse<ApiResponse<User | ErrorZod[]>>> {
     try {
         const { userId } = await params
+        console.log("Testing", userId)
         if(isNaN(Number(userId)) || userId == null) { 
             return NextResponse.json({
                 message: "Cannot sellectted data, params is not number or it's empty",

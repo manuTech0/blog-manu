@@ -1,8 +1,8 @@
 import { ZodAuth } from "@/lib/allZodSchema";
-import { CustomJWTPayload, isTokenError, TokenError, verifyToken } from "@/lib/jwt";
+import { CustomJWTPayload, generateToken, isTokenError, TokenError, verifyToken } from "@/lib/jwt";
 import { logger } from "@/lib/logger";
 import prisma from "@/lib/prisma";
-import { ApiResponse, ErrorZod } from "@/lib/types";
+import { ApiResponse, ErrorZod, GenerateTokenType } from "@/lib/types";
 import { JWTVerifyResult } from "jose";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -18,7 +18,7 @@ type BodyType = z.infer<typeof otpValidateSchema>
  * @param {NextResponse} request
  * @return {*}  {Promise<NextResponse<ApiResponse<ErrorZod[]>>>}
  */
-export async function POST(request: NextResponse): Promise<NextResponse<ApiResponse<ErrorZod[]>>> {
+export async function POST(request: NextResponse): Promise<NextResponse<ApiResponse<GenerateTokenType | ErrorZod[]>>> {
     try {
         const token: string | null | undefined = request.cookies.get("token")?.value || request.headers.get("Authorization")?.split(' ')[1]
         const payload: JWTVerifyResult<CustomJWTPayload> | TokenError = await verifyToken(token || "token")
@@ -43,21 +43,30 @@ export async function POST(request: NextResponse): Promise<NextResponse<ApiRespo
                 }, { status: 403 })
             }
             if(userData?.otp == validatedData.otp) {
-                await prisma.user.update({
+                const update = await prisma.user.update({
                     where: { userId: userData.userId },
                     data: {
                         isVerified: true,
                         otp: null
                     }
                 })
+                const newToken = await generateToken({
+                    email: update.email,
+                    role: update.role,
+                    isverified: update.isVerified
+                })
+                if(isTokenError(newToken)) {
+                    return NextResponse.json(newToken, { status: 501 })
+                }
                 return NextResponse.json({
                     message: "OTP Verified",
+                    data: newToken,
                     error: false
                 }, { status: 200 })
             }
         }
         return NextResponse.json({
-            message: "OTP vaied create",
+            message: "OTP invalid",
             error: true
         }, { status: 401 })
     } catch (error) {

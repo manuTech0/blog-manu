@@ -40,7 +40,7 @@ export type TriggerDialogForm = {
     mode: "edit" | "add",
     dataType: "post" | "user",
     dialog: boolean,
-    data: User | Post | null
+    data: User | Post | User<Post> | Post<User> | null
 }
 
 export type AdminState = {

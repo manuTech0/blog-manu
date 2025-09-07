@@ -100,7 +100,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
  */
 export async function PUT(request: NextResponse, { params }: { params: Promise<{ id: string }> }): Promise<NextResponse<ApiResponse<Post | ErrorZod[]>>> {
     try {
-        const body: UpdateData = await request.json()
+        const b: UpdateData = await request.json()
+        const body = {...b}
         const validatedData = await updateSchema.parseAsync(body)
         const { id } = await params
         if(isNaN(Number(id))) {
@@ -133,9 +134,9 @@ export async function PUT(request: NextResponse, { params }: { params: Promise<{
         const responseCreate = await prisma.post.update({
             where: { postId: Number(id) },
             data: {
-                title: validatedData.title,
-                content: validatedData.content,
-                slug: slug
+                title: validatedData.title || getLastData?.title,
+                content: validatedData.content || getLastData?.content,
+                slug: slug || getLastData?.slug
             }
         })
         return NextResponse.json({

@@ -1,16 +1,11 @@
 import { Resend } from 'resend';
-import OTP from "otp-generator"
 import { EmailSendResponse } from './types';
+import { createOtp } from './utils';
 
 export async function sendOTP(target: string): Promise<EmailSendResponse> {
     const resend = new Resend(process.env.RESEND_API_KEY)
     let res: Awaited<ReturnType<typeof resend.emails.send>>
-     const otp = await OTP.generate(6, {
-        digits: true,
-        upperCaseAlphabets: true,
-        specialChars: false,
-        lowerCaseAlphabets: false
-    })
+     const otp = await createOtp()
     const message = String(`<html><h1>${otp}</h1></html>`).toUpperCase()
     if(process.env.NODE_ENV == "production") {
         res = await resend.emails.send({

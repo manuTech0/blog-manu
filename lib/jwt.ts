@@ -53,7 +53,6 @@ export async function generateToken(payload: CustomJWTPayload, expiresIn: string
                 message: `JWT key invalid : ${error.message}` 
             }
         }
-        logger.error(error)
         return {
             error: true,
             message: "Unknown error, please report to admin or customer service, time error: " + new Date().getTime()

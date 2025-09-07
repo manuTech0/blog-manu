@@ -15,11 +15,12 @@ import dynamic from "next/dynamic";
 import slugify from "slugify";
 import Cookies from "js-cookie"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
-import { ApiResponse, getFormSchema, Post, User } from "@/lib/types";
+import { ApiResponse, ErrorZod, Post, User } from "@/lib/types";
 import { logger } from "@/lib/logger";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { ClientZodPost, ClientZodUser } from "@/lib/allZodSchema";
+import { slugifyOptions, zodErrorValidateToStr } from "@/lib/utils";
 
 
 export default function Posts() {
@@ -34,7 +35,7 @@ export default function Posts() {
   React.useEffect(() => {
     async function fetchData() {
       try {
-        const response = await axios.get("/api/post", {
+        const response = await axios.get("/api/post/all", {
           headers: {
             "Content-Type": "Application/json"
           }
@@ -91,39 +92,51 @@ export default function Posts() {
   const zodUser = new ClientZodUser()
   const zodPost = new ClientZodPost()
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [usersSchema, postSchema] = [zodUser.createUserSchema, zodPost.createSchema]
 
-  const formSchema = getFormSchema(formMode.dataType) as typeof usersSchema | typeof postSchema
+  const usersSchemaFull = usersSchema.extend({ type: z.literal("user") });
+  const postSchemaFull = postSchema.extend({ type: z.literal("post") });
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const formSchema = z.discriminatedUnion("type", [
+    usersSchemaFull,
+    postSchemaFull,
+  ]);
+
+  type FormSchemaType = z.infer<typeof formSchema>;
+  const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      type: formMode.dataType,
       title: (formMode.mode == "edit") ? (formMode.data as Post).title : "",
       content: (formMode.mode == "edit") ? (formMode.data as Post).content : "",
       userId: (formMode.mode == "edit") ? (formMode.data as Post).userId : undefined,
+      postId: (formMode.mode == "edit") ? (formMode.data as Post).postId : undefined,
     }
   })
   React.useEffect(() => {
     if (formMode.mode === "edit") {
       if(formMode.dataType == "user") {
         form.reset({
+          type: formMode.dataType,
           username: (formMode.data as User).username,
-          email: (formMode.data as User).username,
+          email: (formMode.data as User).email,
           password: "",
           role: (formMode.data as User).role,
           isVerified: (formMode.data as User).isVerified
         })
       } else {
         form.reset({
+          type: formMode.dataType, 
           title: (formMode.data as Post).title,
           content: (formMode.data as Post).content,
           userId: (formMode.data as Post).userId,
+          postId: (formMode.data as Post).postId
         });
       }
     } else if (formMode.mode === "add") {
       if(formMode.dataType == "user") {
         form.reset({
+          type: formMode.dataType, 
           username: "",
           email: "",
           password: "",
@@ -132,6 +145,7 @@ export default function Posts() {
         })
       } else {
         form.reset({
+          type: formMode.dataType, 
           title: "",
           content: "",
           userId: undefined,
@@ -142,66 +156,69 @@ export default function Posts() {
 
   const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false })
 
-  function editSubmit(values: z.infer<typeof formSchema>) {
-    if(formMode.dataType == "user" && "password" in values ) {
-      const dataPromise = axios.put(`/api/protected/user/admin/${values.userId}/`, {
-          username: values.username,
-          email: values.email,
-          password: values.password,
-          role: values.role,
-          isVerified: values.isVerified,
-      }, {
-        headers: {
-          "Content-Type": "Application/json",
-          "Authorization": `Bearer ${token}` 
-        },
-      })
-      toast.promise(dataPromise, {
-        loading: 'Loading...',
-        success: (response) => {
-          const data: ApiResponse = response.data
-          if(data.error || !data.data) {
-            return "Uh oh! Something went wrong: " + data.message
-          }
-          setUsers(data.data as User<Post>[])
-          setOpenDialog(false)
-          return "Post has been updated"
-        },
-        error: "error"
-      });
-    } else if("title" in values) {
-      const slug = slugify(values.title, {
-        lower: true,
-        strict: true,
-        locale:  "id",
-        trim: true,
-      })
-      const dataPromise = axios.put(`/api/protected/post/${values.postId}/`, {
-        title: values.title,
-        content: values.content,
-        slug: slug
-      }, {
-        headers: {
-          "Content-Type": "Application/json",
-          "Authorization": `Bearer ${token}` 
-        },
-      })
-      toast.promise(dataPromise, {
-        loading: 'Loading...',
-        success: (response) => {
-          const data: ApiResponse = response.data
-          if(data.error || !data.data) {
-            return "Uh oh! Something went wrong: " + data.message
-          }
-          setPost(data.data as Post<User>[])
-          setOpenDialog(false)
-          return "Post has been updated"
-        },
-        error: 'Error',
-      });
+  function editSubmit(values: FormSchemaType) {
+    try {
+      if(formMode.dataType == "user" && "username" in values) {
+        const dataPromise = axios.put(`/api/protected/user/admin/${values.userId}/`, {
+            username: values.username,
+            email: values.email,
+            password: values.password,
+            role: values.role,
+            isVerified: values.isVerified,
+        }, {
+          headers: {
+            "Content-Type": "Application/json",
+            "Authorization": `Bearer ${token}` 
+          },
+        })
+        toast.promise(dataPromise, {
+          loading: 'Loading...',
+          success: (response) => {
+            const data: ApiResponse = response.data
+            if(data.error || !data.data) {
+              if(data.data as ErrorZod[]) return zodErrorValidateToStr(data.data as ErrorZod[])
+              return "Uh oh! Something went wrong: " + data.message
+            }
+            setUsers(data.data as User<Post>[])
+            setOpenDialog(false)
+            return "Post has been updated"
+          },
+          error: (err) => (err?.data?.data as ErrorZod[]) ? zodErrorValidateToStr(err?.data?.message as ErrorZod[]) : err?.data?.message || err?.message || "Unknown error"
+        });
+      } else if("title" in values) {
+        const slug = slugify(values.title, slugifyOptions)
+        const dataPromise = axios.put(`/api/protected/post/${values.postId}/`, {
+          title: values.title,
+          content: values.content,
+          slug: slug
+        }, {
+          headers: {
+            "Content-Type": "Application/json",
+            "Authorization": `Bearer ${token}` 
+          },
+        })
+        toast.promise(dataPromise, {
+          loading: 'Loading...',
+          success: (response) => {
+            const data: ApiResponse = response.data
+            if(data.error || !data.data) {
+              if(data.data as ErrorZod[]) return zodErrorValidateToStr(data.data as ErrorZod[])
+              return "Uh oh! Something went wrong: " + data.message
+            }
+            setPost(data.data as Post<User>[])
+            setOpenDialog(false)
+            return "Post has been updated"
+          },
+          error: (err) => (err?.data?.data as ErrorZod[]) ? zodErrorValidateToStr(err?.data?.message as ErrorZod[]) : err?.data?.message || err?.message || "Unknown error"
+        });
+      } else {
+        toast.error("Error send edited data")
+      }
+    } catch(e) {
+      logger.error(e)
     }
   }
-  function addSubmit(values: z.infer<typeof formSchema>){
+  function addSubmit(values: FormSchemaType){
     if(formMode.dataType == "user" && "password" in values) {
       const dataPromise = axios.post("/api/protected/user/admin/0/", {
           username: values.username,
@@ -220,6 +237,7 @@ export default function Posts() {
         success: (response) => {
           const data: ApiResponse = response.data
           if(data.error || !data.data) {
+            if(data.data as ErrorZod[]) return zodErrorValidateToStr(data.data as ErrorZod[])
             return "Uh oh! Something went wrong: " + JSON.stringify(data.data)
           }
           setUsers(data.data as User<Post>[])
@@ -227,7 +245,7 @@ export default function Posts() {
           form.reset()
           return `Post has been added`;
         },
-        error: 'Error',
+        error: (err) => (err?.data?.data as ErrorZod[]) ? zodErrorValidateToStr(err?.data?.message as ErrorZod[]) : err?.data?.message || err?.message || "Unknown error",
       });
     } else if("title" in values) {
       const dataPromise = axios.post("/api/protected/post/0/", {
@@ -245,6 +263,7 @@ export default function Posts() {
         success: (response) => {
           const data: ApiResponse = response.data
           if(data.error || !data.data) {
+            if(data.data as ErrorZod[]) return zodErrorValidateToStr(data.data as ErrorZod[])
             return "Uh oh! Something went wrong: " + JSON.stringify(data.data)
           }
           setPost(data.data as Post<User>[])
@@ -252,8 +271,10 @@ export default function Posts() {
           form.reset()
           return `Post has been added`;
         },
-        error: 'Error',
+        error: (err) => (err?.data?.data as ErrorZod[]) ? zodErrorValidateToStr(err?.data?.message as ErrorZod[]) : err?.data?.message || err?.message || "Unknown error"
       });
+    } else {
+      toast.error("Error send edited data")
     }
   }
 
@@ -275,16 +296,28 @@ export default function Posts() {
               }</DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(formMode.mode == "edit" ? editSubmit : addSubmit)}>
+              <form method="post" onSubmit={form.handleSubmit(formMode.mode == "edit" ? editSubmit : addSubmit )}>
                 {(formMode.dataType == "post") ? (
+                  
                   <div>
+                    <FormField
+                      control={form.control}
+                      name="type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Input  {...field} type="hidden" value="post" />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
                     <FormField
                       control={form.control}
                       name="postId"
                       render={({ field }) => (
                         <FormItem>
                           <FormControl>
-                            <Input  {...field} type="hidden" />
+                            <Input  {...field} type="hidden" value={field.value || 0} onChange={value => field.onChange(Number(value))}/>
                           </FormControl>
                         </FormItem>
                       )}
@@ -325,14 +358,12 @@ export default function Posts() {
                             <Select onValueChange={value => field.onChange(Number(value))} defaultValue={String(field.value)}>
                               <FormControl>
                                 <SelectTrigger>
-                                  Select a username to display
+                                  {users.find(u => u.userId === field.value)?.username ?? "Select a user"}
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
                                 {users.map(item => (
-                                  // TODO: Fix here
-                                  //  eslint-disable-next-line react/jsx-key
-                                  <SelectItem value={String(item.userId)}>{item.username}</SelectItem>
+                                  <SelectItem key={item.userId} value={String(item.userId)}>{item.username}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
@@ -344,6 +375,17 @@ export default function Posts() {
                   </div>
                 ) : (
                   <div className="overflow">
+                    <FormField
+                      control={form.control}
+                      name="type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Input  {...field} type="hidden" value="post" />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
                     <FormField
                       control={form.control}
                       name="userId"
@@ -404,7 +446,7 @@ export default function Posts() {
                             <Select onValueChange={value => field.onChange(value)} defaultValue={field.value}>
                                 <FormControl>
                                 <SelectTrigger>
-                                    Select a role to display
+                                    {field.value ?? "Select a Role"}
                                 </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
@@ -425,13 +467,16 @@ export default function Posts() {
                           <FormLabel>OTP Verified</FormLabel>
                           <FormControl>
                             <RadioGroup 
-                              defaultValue="one"
-                              onChange={field.onChange}
-                              defaultChecked={formMode.mode == "edit" && field.value}
+                              onValueChange={(val) => field.onChange(val === "true")}
+                              value={String(field.value)}
                             >
                               <div className="flex gap-3">
                                 <RadioGroupItem value="true" id="one" />
-                                <Label htmlFor="one">otp verify</Label>
+                                <Label htmlFor="one">OTP Verified</Label>
+                              </div>
+                              <div className="flex gap-3">
+                                <RadioGroupItem value="false" id="two" />
+                                <Label htmlFor="two">Not Verified</Label>
                               </div>
                             </RadioGroup>
                           </FormControl>
@@ -445,7 +490,7 @@ export default function Posts() {
                   <DialogClose asChild>
                     <Button variant="outline">Cancel</Button>
                   </DialogClose> 
-                  <Button type="submit">Save changes</Button>
+                  <Button type="submit" variant="destructive">Save changes</Button>
                 </DialogFooter>
               </form>
             </Form>

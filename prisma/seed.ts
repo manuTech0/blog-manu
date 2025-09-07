@@ -4,10 +4,8 @@ import prisma from "@/lib/prisma";
 import { faker } from "@faker-js/faker";
 import argon2 from "argon2";
 import { nanoid } from "nanoid";
-import { Prisma } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/client";
-import { CustomJWTPayload, generateToken, isTokenError, TokenError, verifyToken } from "@/lib/jwt";
-import { JWTVerifyResult } from "jose";
+import { generateToken, isTokenError } from "@/lib/jwt";
 
 async function main() {
   try {
@@ -37,6 +35,7 @@ async function main() {
     const jwtAdmin = await generateToken({
       email: admin.email,
       role: "ADMIN",
+      isverified: true
     }, "20 years")
     if(isTokenError(jwtAdmin)) {
         logger.error(jwtAdmin)

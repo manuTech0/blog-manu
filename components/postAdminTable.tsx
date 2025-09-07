@@ -152,9 +152,9 @@ export function PostAdminTable({
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                 <DropdownMenuItem
-                  onClick={() => navigator.clipboard.writeText(post.slug)}
+                  onClick={() => navigator.clipboard.writeText(post.slug || "Not found" )}
                 >
-                  Copy slug
+                  Copy slug 
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 {
@@ -165,7 +165,7 @@ export function PostAdminTable({
                           mode: "edit",
                           dataType: "post",
                           dialog: true,
-                          data: post as Post
+                          data: post as Post<User>
                         })}
                       >
                         Edit

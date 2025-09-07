@@ -40,7 +40,7 @@ import axios from "axios"
 import { AlertDialog, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog"
 import { AlertDialogAction, AlertDialogCancel, AlertDialogDescription, AlertDialogTrigger } from "@radix-ui/react-alert-dialog"
 import { useRouter } from "next/navigation"
-import type { TableMode, TriggerDialogForm, User } from "../lib/types"
+import type {  TableMode, TriggerDialogForm, User } from "../lib/types"
 import { Skeleton } from "./ui/skeleton"
 
 export function UsersAdminTable({
@@ -125,7 +125,7 @@ export function UsersAdminTable({
       accessorKey: "isVerified",
       header: () => <div className="text-center">Verified</div>,
       cell: ({ row }) => {
-        return <div className="text-center lowercase">{row.getValue("role") ? "Yes" : "No"}</div>
+        return <div className="text-center lowercase">{row.getValue("isVerified") ? "yes" : "no"}</div>
       }
     },
     {

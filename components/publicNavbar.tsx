@@ -9,15 +9,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import ThemeToggle from "./toggleThemeButton"
 import { ApiResponse, User } from "@/lib/types"
 import Cookies from "js-cookie"
 import axios from "axios"
+import { ArrowDown } from "lucide-react"
 
 export function PublicNavbar() {
   const router = useRouter()
   const [myUser, setMyUser] = React.useState<User | undefined>(undefined)
+  const pathname = usePathname()
   React.useEffect(() => {
     (async () => {
       const token = Cookies.get("token")
@@ -34,39 +36,47 @@ export function PublicNavbar() {
     })()
   }, [])
 
-  return (
-    <header className="w-full border-b bg-background">
-      <div className="container flex h-16 items-center justify-between px-4">
-        {/* Judul */}
-        <Link href="/" className="text-lg font-bold tracking-wide">
-          Manu Blog
-        </Link>
 
-        {/* Right Section */}
-        <div className="flex items-center gap-4">
-          {/* Theme Toggle */}
-          <ThemeToggle />
-            {myUser ? (
-                <>
-                <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="capitalize">
-                            {myUser.username}
-                        </Button>
-                    </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => router.push("/account")}>
-                            View My Account
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => router.push("/reset-password")}>
-                            Reset Password
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                </>
-            ) : ""}
+  if(!pathname.startsWith("/admin")) {
+    return (
+      <header className="w-full border-b bg-background fixed t-0" style={{ "top": 0 }}>
+        <div className="container flex h-16 items-center justify-between px-4">
+          {/* Judul */}
+          <Link href="/" className="text-lg font-bold tracking-wide">
+            Manu Blog
+          </Link>
+  
+          {/* Right Section */}
+          <div className="flex items-center gap-4">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+              {myUser ? (
+                  <>
+                  <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="capitalize">
+                              {myUser.username} <ArrowDown />
+                          </Button>
+                      </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => router.push("/account")}>
+                              View My Account
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push("/reset-password")}>
+                              Reset Password
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push("/logout")}>
+                              Logout
+                          </DropdownMenuItem>
+                      </DropdownMenuContent>
+                  </DropdownMenu>
+                  </>
+              ) : ""}
+          </div>
         </div>
-      </div>
-    </header>
-  )
+      </header>
+    )
+  } else {
+    return (<></>)
+  }
 }

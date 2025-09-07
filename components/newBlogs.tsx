@@ -79,89 +79,93 @@ export default function NewBlogs({ userId }: { userId?: number }) {
             Memuat artikel...
             </p>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 justify-center">
-            {!loading &&
-            blogs.map((blog, index) => (
-                <motion.div
-                key={blog.slug}
-                initial={{ opacity: 0, y: -50 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                    delay: index * 0.15,
-                    duration: 0.5,
-                    ease: "easeOut",
-                }}
-                className="flex justify-center"
-                    >
-                    <Card className={cn("w-80 shadow-md hover:shadow-xl transition-shadow duration-300 flex flex-col justify-between")}>
-                        <CardContent className="p-6 pb-3">
-                        <CardTitle className="mb-2 text-xl"><Link href={`/${blog.user?.username}/${blog.slug}`}>{blog.title}</Link></CardTitle>
-                        <p className="text-gray-600 text-sm">{createExcerptFromHtml(blog.content)}</p>
-                        </CardContent>
-                        <CardFooter className="p-6 pt-2 text-xs text-gray-500 flex flex-col gap-1 items-start">
-                        <p>
-                            Dibuat oleh:{" "}
-                            <span className="font-medium"><Link href={`${blog.user?.username}`}>{blog.user?.username}</Link></span>
-                        </p>
-                        <p>
-                            {format(new Date(blog.createdAt), "dd MMMM yyyy, HH:mm", {
-                            locale: id,
-                            })}
-                        </p>
-                        </CardFooter>
-                    </Card>
-                </motion.div>
-            ))}
-        </div>
-
-        {/* Pagination */}
-        <div className="mt-10 flex justify-center">
-            <Pagination>
-            <PaginationContent>
-                <PaginationItem>
-                <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                    e.preventDefault()
-                    handlePageChange(page - 1)
-                    }}
-                    className={page === 1 ? "pointer-events-none opacity-50" : ""}
-                />
-                </PaginationItem>
-
-                {Array.from({ length: totalPages }).map((_, i) => {
-                const pageIndex = i + 1
-                return (
-                    <PaginationItem key={pageIndex}>
-                    <PaginationLink
-                        href="#"
-                        isActive={pageIndex === page}
-                        onClick={(e) => {
-                        e.preventDefault()
-                        handlePageChange(pageIndex)
+        {blogs ? (
+            <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 justify-center">
+                    {!loading &&
+                    blogs.map((blog, index) => (
+                        <motion.div
+                        key={blog.slug}
+                        initial={{ opacity: 0, y: -50 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{
+                            delay: index * 0.15,
+                            duration: 0.5,
+                            ease: "easeOut",
                         }}
-                    >
-                        {pageIndex}
-                    </PaginationLink>
-                    </PaginationItem>
-                )
-                })}
+                        className="flex justify-center"
+                            >
+                            <Card className={cn("w-80 shadow-md hover:shadow-xl transition-shadow duration-300 flex flex-col justify-between")}>
+                                <CardContent className="p-6 pb-3">
+                                <CardTitle className="mb-2 text-xl"><Link href={`/${blog.user?.username}/${blog.slug}`}>{blog.title}</Link></CardTitle>
+                                <p className="text-gray-600 text-sm">{createExcerptFromHtml(blog.content)}</p>
+                                </CardContent>
+                                <CardFooter className="p-6 pt-2 text-xs text-gray-500 flex flex-col gap-1 items-start">
+                                <p>
+                                    Dibuat oleh:{" "}
+                                    <span className="font-medium"><Link href={`${blog.user?.username}`}>{blog.user?.username}</Link></span>
+                                </p>
+                                <p>
+                                    {format(new Date(blog.createdAt), "dd MMMM yyyy, HH:mm", {
+                                    locale: id,
+                                    })}
+                                </p>
+                                </CardFooter>
+                            </Card>
+                        </motion.div>
+                    ))}
+                </div>
 
-                <PaginationItem>
-                <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                    e.preventDefault()
-                    handlePageChange(page + 1)
-                    }}
-                    className={
-                    page === totalPages ? "pointer-events-none opacity-50" : ""
-                    }
-                />
-                </PaginationItem>
-            </PaginationContent>
-            </Pagination>
-        </div>
+                <div className="mt-10 flex justify-center">
+                    <Pagination>
+                    <PaginationContent>
+                        <PaginationItem>
+                        <PaginationPrevious
+                            href="#"
+                            onClick={(e) => {
+                            e.preventDefault()
+                            handlePageChange(page - 1)
+                            }}
+                            className={page === 1 ? "pointer-events-none opacity-50" : ""}
+                        />
+                        </PaginationItem>
+
+                        {Array.from({ length: totalPages }).map((_, i) => {
+                        const pageIndex = i + 1
+                        return (
+                            <PaginationItem key={pageIndex}>
+                            <PaginationLink
+                                href="#"
+                                isActive={pageIndex === page}
+                                onClick={(e) => {
+                                e.preventDefault()
+                                handlePageChange(pageIndex)
+                                }}
+                            >
+                                {pageIndex}
+                            </PaginationLink>
+                            </PaginationItem>
+                        )
+                        })}
+
+                        <PaginationItem>
+                        <PaginationNext
+                            href="#"
+                            onClick={(e) => {
+                            e.preventDefault()
+                            handlePageChange(page + 1)
+                            }}
+                            className={
+                            page === totalPages ? "pointer-events-none opacity-50" : ""
+                            }
+                        />
+                        </PaginationItem>
+                    </PaginationContent>
+                    </Pagination>
+                </div>
+            </>
+
+        ) : ( <h1>Not Found</h1> )}
         </div>
     )
     }

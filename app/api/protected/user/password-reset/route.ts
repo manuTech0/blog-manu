@@ -22,6 +22,8 @@ type ResetPasswordSchemaType = z.infer<typeof resetPasswordSchema>
 export async function PUT(request: NextRequest): Promise<NextResponse<ApiResponse<User | ErrorZod[]>>> {
     try {
         const token: string | null | undefined = request.cookies.get("token")?.value || request.headers.get("Authorization")?.split(' ')[1]
+        const body: ResetPasswordSchemaType = await request.json()
+        const validatedData: ResetPasswordSchemaType = await resetPasswordSchema.parseAsync(body)
         const payload: JWTVerifyResult<CustomJWTPayload> | TokenError = await verifyToken(token || "token")
         if(isTokenError(payload)) {
             return NextResponse.json(payload, { status: 501 })
@@ -41,13 +43,12 @@ export async function PUT(request: NextRequest): Promise<NextResponse<ApiRespons
                 error: true
             })
         }
-        if(user.isVerified) {
-            const body: ResetPasswordSchemaType = await request.json()
-            const validatedData: ResetPasswordSchemaType = await resetPasswordSchema.parseAsync(body)
+        if(user.isVerified && validatedData.otp == user.otp) {
             const update = await prisma.user.update({
                 where: { userId: user.userId },
                 data: {
-                    password: validatedData.newPassword
+                    password: validatedData.newPassword,
+                    otp: null
                 },
                 omit: {
                     password: true,

@@ -1,3 +1,4 @@
+import OTP from 'otp-generator';
 import { ErrorZod, SlugifyOptions } from '@/lib/types';
 import * as iso8601 from 'iso8601-duration';
 import { clsx, type ClassValue } from "clsx"
@@ -62,4 +63,14 @@ export function stripHtml(html: string): string {
 export function createExcerptFromHtml(html: string, maxLength: number = 150): string {
   const cleanText = stripHtml(html)
   return createExcerpt(cleanText, maxLength)
+}
+
+export async function createOtp(){
+  const otp = await OTP.generate(6, {
+        digits: true,
+        upperCaseAlphabets: true,
+        specialChars: false,
+        lowerCaseAlphabets: false
+    })
+  return otp
 }

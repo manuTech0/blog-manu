@@ -22,7 +22,7 @@ import { z } from "zod"
 import { TriangleAlertIcon } from "lucide-react"
 import { toast } from "sonner"
 import axios from "axios"
-import type { LoginResponse, GenerateTokenType } from "@/lib/types"
+import type { ApiResponse, GenerateTokenType } from "@/lib/types"
 import Cookies from "js-cookie"
 import { durationToUnix } from "@/lib/utils"
 import { useRouter } from "next/navigation"
@@ -40,6 +40,7 @@ type LoginFormData = z.infer<typeof loginSchema>
 export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [cookieValue, setCookieValue] = useState<GenerateTokenType | undefined>(undefined)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [tokenCookie, setTokenCookie] = useState<string | undefined>(undefined)
   const router = useRouter()
 
@@ -60,6 +61,7 @@ export default function LoginPage() {
         secure: process.env.NODE_ENV == "production",
       })
       setTokenCookie(setToken)
+      router.replace("/dashboard")
     }
   }, [cookieValue])
 
@@ -72,17 +74,10 @@ export default function LoginPage() {
     }), {
       loading: "Verifications....",
       success: async (response) => {
-        const apiLogin: LoginResponse = response.data
+        const apiLogin: ApiResponse<string> = response.data
         if(!apiLogin.error && apiLogin.data as GenerateTokenType) {
           setCookieValue(apiLogin.data as GenerateTokenType)
-          if(tokenCookie) {
-            setTimeout(() => {
-              router.replace("/dashboard")
-            }, 800)
-            return "Login success"
-          } else {
-            return "Login error, failed create cookie"
-          }
+          return "Success logged"
         } else {
           return apiLogin.message
         }

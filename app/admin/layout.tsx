@@ -10,17 +10,21 @@ export const metadata: Metadata = {
   title: "Admin page"
 }
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
     return (
-        <AdminStateProvider>
-            <SidebarProvider>
-                <AppSidebar />
-                <main className="w-full">
-                    <SidebarTrigger />
-                    {children}
-                    <Toaster />
-                </main>
-            </SidebarProvider>
-        </AdminStateProvider>
+        <html lang="en">
+            <body>
+                <AdminStateProvider>
+                    <SidebarProvider>
+                        <AppSidebar />
+                        <main className="w-full">
+                            <SidebarTrigger />
+                            {children}
+                            <Toaster />
+                        </main>
+                    </SidebarProvider>
+                </AdminStateProvider>
+            </body>
+        </html>
     )
 }

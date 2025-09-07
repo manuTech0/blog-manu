@@ -7,7 +7,6 @@ import Cookies from "js-cookie"
 import { ApiResponse, User } from "@/lib/types"
 import axios from "axios"
 import NewBlogs from "@/components/newBlogs"
-import ThemeToggle from "@/components/toggleThemeButton"
 
 
 
@@ -48,7 +47,7 @@ export default function LandingPage() {
 
   return (
     <>
-      <main className="min-h-screen bg-gradient-to-br from-white to-slate-100 flex flex-col items-center justify-center px-4">
+      <main className="min-h-screen bg-background from-white to-slate-100 flex flex-col items-center justify-center px-4">
         <motion.div
           className="text-center max-w-2xl w-screen"
           initial={{ opacity: 0, y: 30 }}

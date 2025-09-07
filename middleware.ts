@@ -2,6 +2,8 @@ import { MiddlewareConfig, NextRequest, NextResponse } from "next/server";
 import { NextURL } from "next/dist/server/web/next-url";
 import { CustomJWTPayload, isTokenError, TokenError, verifyToken } from "./lib/jwt";
 import { JWTVerifyResult } from "jose";
+import { logger } from "./lib/logger";
+import { Role } from "./lib/generated/prisma";
 
 interface ErrorExtra {
   type: "api" | "web";
@@ -20,7 +22,7 @@ class AuthUrlError extends Error {
 }
 
 function isPublicPath(pathname: string): boolean {
-  return ["/", "/login", "/register", "/otp", "/logout", "/notfound"].some(p =>
+  return ["/", "/notfound"].some(p =>
     pathname.startsWith(p)
   );
 }
@@ -50,8 +52,9 @@ async function authUrl(
     }
 
     const { role, isverified } = decode.payload;
-    const isAdmin = role === "ADMIN";
-    const isUser = role === "USER";
+    const isAdmin = role as Role && role === "ADMIN";
+    const isUser = role as Role && role === "USER";
+    logger.info(pathname, isAdmin, isUser, isverified)
 
     if (pathname.startsWith("/api/protected")) {
       if ((isAdmin || isUser) && isverified) return NextResponse.next();
@@ -123,6 +126,7 @@ export const config: MiddlewareConfig = {
     "/dashboard/:path*",
     "/admin/:path*",
     "/api/protected/:path*",
+    "/admin"
   ],
   
 };

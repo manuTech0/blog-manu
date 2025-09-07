@@ -26,7 +26,6 @@ import type { GenerateTokenType, ErrorZod, ApiResponse } from "@/lib/types"
 import Cookies from "js-cookie"
 import { durationToUnix, zodErrorValidateToStr } from "@/lib/utils"
 import { useRouter } from "next/navigation"
-import { Metadata } from "next"
 
 // ✅ Zod validation schema
 const registerSchema = z.object({

@@ -28,10 +28,6 @@ import { durationToUnix, zodErrorValidateToStr } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 import { Metadata } from "next"
 
-export const metadata: Metadata = {
-    title: "Registration"
-}
-
 // ✅ Zod validation schema
 const registerSchema = z.object({
   username: z.string().min(4, "Username must be at least 3 characters"),

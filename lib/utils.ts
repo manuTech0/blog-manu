@@ -1,5 +1,4 @@
 import OTP from 'otp-generator';
-import { ErrorZod, SlugifyOptions } from '@/lib/types';
 import * as iso8601 from 'iso8601-duration';
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
@@ -34,21 +33,6 @@ export function durationToUnix(duration: string): number {
   throw new Error(`Format durasi tidak dikenali: "${duration}"`);
 }
 
-export function zodErrorValidateToStr(err: ErrorZod[]) {
-  const allFieald = err.map((field: ErrorZod) => {
-    const path = field.path.split(".")[0]
-    return `${path}: ${field.message}`
-  })
-  return allFieald.join("\n")
-}
-
-export const slugifyOptions: SlugifyOptions = {
-  lower: true,
-  strict: true,
-  locale:  "id",
-  trim: true,
-}
-
 export function createExcerpt(text: string, maxLength: number = 100): string {
   if (!text) return ""
   return text.length > maxLength
@@ -73,4 +57,35 @@ export async function createOtp(){
         lowerCaseAlphabets: false
     })
   return otp
+}
+
+export const isUnauthorizedError = (error: any): boolean => {
+    if (!error) return false
+
+    const message =
+        error?.message ||
+        error?.extensions?.originalError?.message ||
+        error?.extensions?.message
+
+    return typeof message === "string" &&
+        message.toLowerCase().includes("unauthorized")
+}
+
+export function extractGraphQLErrorMessage(error: unknown): string {
+  try {
+    // Cek jika error adalah instance Error dan mengandung JSON di dalam message
+    if (error instanceof Error && error.message.includes("{")) {
+      const jsonStart = error.message.indexOf("{");
+      const jsonString = error.message.slice(jsonStart);
+
+      const parsed = JSON.parse(jsonString);
+      const gqlError = parsed.response?.errors?.[0];
+
+      const originalMessage = gqlError?.extensions?.originalError?.message;
+      return originalMessage ?? gqlError?.message ?? "Unknown GraphQL error.";
+    }
+    return "Unexpected error format.";
+  } catch (err) {
+    return "Failed to parse error message.";
+  }
 }

@@ -3,47 +3,29 @@ import * as React from "react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import Cookies from "js-cookie"
-import { ApiResponse, User } from "@/lib/types"
-import axios from "axios"
 import NewBlogs from "@/components/newBlogs"
+import { useAuth } from "@/lib/useAuth"
 
 
 
 export default function LandingPage() {
-  const [myUser, setMyUser] = React.useState<User | undefined>(undefined)
+  const {isAuth, user} = useAuth()
   const [viewBlogs, setViewBlogs] = React.useState(false)
-  React.useEffect(() => {
-    (async () => {
-      const token = Cookies.get("token")
-      const response = await axios.get("/api/protected/user/myuser", {
-        headers: {
-          "Authorization": "Bearer " + token,
-          "Content-Type": "application/json"
-        }
-      })
-      const data: ApiResponse<User> = response.data
-      if(data && data.data as User ) {
-        setMyUser(data.data as User)
-      } 
-    })()
-  }, [])
-  
-  React.useEffect(() => {
-    (async () => {
-      const token = Cookies.get("token")
-      const response = await axios.get("/api/protected/user/myuser", {
-        headers: {
-          "Authorization": "Bearer " + token,
-          "Content-Type": "application/json"
-        }
-      })
-      const data: ApiResponse<User> = response.data
-      if(data && data.data as User ) {
-        setMyUser(data.data as User)
-      } 
-    })()
-  }, [])
+  // React.useEffect(() => {
+  //   (async () => {
+  //     const token = Cookies.get("token")
+  //     const response = await axios.get("/api/protected/user/myuser", {
+  //       headers: {
+  //         "Authorization": "Bearer " + token,
+  //         "Content-Type": "application/json"
+  //       }
+  //     })
+  //     const data: ApiResponse<User> = response.data
+  //     if(data && data.data as User ) {
+  //       setMyUser(data.data as User)
+  //     } 
+  //   })()
+  // }, [])
 
   return (
     <>
@@ -62,13 +44,10 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            {myUser == undefined ? (
+            {user == undefined ? (
               <>
                 <Link href="/login">
                   <Button variant="default">Login</Button>
-                </Link>
-                <Link href="/register">
-                  <Button variant="secondary">Register</Button>
                 </Link>
               </>
             ) : ""}

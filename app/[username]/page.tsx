@@ -10,17 +10,19 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage
 } from "@/components/ui/breadcrumb"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useParams, useRouter } from "next/navigation";
-import { ApiResponse, Post, User } from "@/lib/types";
-import axios from "axios";
 import BlogPage from "@/components/newBlogs";
+import { useAuth } from "@/lib/useAuth";
+import { apiFetch } from "@/lib/apiRequest";
+import { Posts, Users } from "@/lib/types";
 
 
 export default function UserPage() {
    const { username } = useParams()
-  const [post, setPost] = React.useState<Post<User> | null>(null)
+  const [userWithPost, setUserWithPost] = React.useState<Users | null>(null)
   const [loading, setLoading] = React.useState(true)
+  const {user, loading: authLoading} = useAuth()
 
   const router = useRouter()
 
@@ -28,9 +30,36 @@ export default function UserPage() {
     if (username) {
         (async () => {
             try {
-                const res = await axios.get("/api/post/"+username)
-                const data: ApiResponse = res.data
-                setPost(data.data as Post<User>)
+                const res = (await apiFetch(`
+                  query PostWithUser($username: String!) {
+                      ByUser(username: $username) {
+                        email
+                        fullname
+                        profilePicture
+                        status
+                        uniqueId
+                        updateAt
+                        userId
+                        username
+                        verified
+                        posts {
+                          content
+                          createdAt
+                          postId
+                          slug
+                          status
+                          title
+                          updateAt
+                          userId
+                        }
+                      }
+                    }
+                `, {
+                  variables: {
+                    username: username
+                  }
+                })).request
+                setUserWithPost(res.ByUser)
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             } catch (e) {
                 router.push("/notfound")
@@ -39,14 +68,14 @@ export default function UserPage() {
             }
         })()
     }
-  }, [username])
+  }, [username, user])
 
-  if (loading) {
+  if (loading || authLoading) {
     return <div className="text-center mt-20 text-gray-500">Memuat...</div>
   }
 
-  if (!post) {
-    return <div className="text-center mt-20 text-red-500">Post tidak ditemukan</div>
+  if (!userWithPost?.posts) {
+    return <div className="text-center mt-20 text-red-500">Blog not defined</div>
   }
 
   return (
@@ -59,31 +88,30 @@ export default function UserPage() {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>{post.user?.username}</BreadcrumbPage>
+            <BreadcrumbPage>{userWithPost.username}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
       <Separator className="my-4" />
 
-      {/* Header User seperti GitHub/TikTok */}
       <div className="flex items-center gap-4 mb-6">
         <Avatar className="h-16 w-16">
-          <AvatarFallback>{post.user?.username[0].toUpperCase()}</AvatarFallback>
+          <AvatarImage src={userWithPost.profilePicture!} />
+          <AvatarFallback>{(userWithPost.username || "")[0].toLocaleUpperCase()}</AvatarFallback>
         </Avatar>
         <div>
           <h1 className="text-2xl font-bold">
-            {post.user?.username ?? post.user?.username}
+            {userWithPost.username}
           </h1>
-          <p className="text-muted-foreground">@{post.user?.username}</p>
-          <p className="text-sm text-muted-foreground">ID: {post.user?.uniqueId}</p>
+          <p className="text-muted-foreground">@{userWithPost.fullname}</p>
+          <p className="text-sm text-muted-foreground">ID: {userWithPost.uniqueId}</p>
         </div>
       </div>
 
       <Separator className="mb-4" />
 
-      {/* Feed Blog */}
-      <BlogPage userId={post.userId} />
+      <BlogPage userId={userWithPost.userId} />
     </div>
   )
 }

@@ -3,57 +3,59 @@
 import * as React from "react";
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import axios from "axios"
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
 import { motion } from "framer-motion"
-import { ApiResponse, ErrorZod, Post, User } from "@/lib/types";
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import Cookies from "js-cookie"
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { zodErrorValidateToStr } from "@/lib/utils";
 import ReactMarkdown from "react-markdown"
-
+import { useAuth } from "@/lib/useAuth";
+import { apiFetch } from "@/lib/apiRequest";
+import { Posts } from "@/lib/types";
+import { ButtonGroup } from "@/components/ui/button-group"
 
 export default function BlogDetailPage() {
   const { slug } = useParams()
-  const [post, setPost] = useState<Post<User> | null>(null)
+  const [post, setPost] = useState<Posts | null>(null)
   const [loading, setLoading] = useState(true)
-
+  const {isAuth, user} = useAuth()
   const router = useRouter()
 
-const [myUser, setMyUser] = React.useState<User | undefined>(undefined)
-  React.useEffect(() => {
-    (async () => {
-      setLoading(true)
-      const token = Cookies.get("token")
-      const response = await axios.get("/api/protected/user/myuser", {
-        headers: {
-          "Authorization": "Bearer " + token,
-          "Content-Type": "application/json"
-        }
-      })
-      const data: ApiResponse<User> = response.data
-      if(data && data.data as User ) {
-        setLoading(false)
-        setMyUser(data.data as User)
-      } 
-    })()
-  }, [])
+
 
   useEffect(() => {
     if (slug) {
         (async () => {
             try {
-                const res = await axios.get("/api/post/"+slug)
-                const data: ApiResponse = res.data
-                setPost(data.data as Post<User>)
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            } catch (e) {
+                const res = (await apiFetch(`
+                  query PostBySlug($slug: String!) {
+                    BySlug(slug: $slug) {
+                      content
+                      createdAt
+                      postId
+                      slug
+                      status
+                      title
+                      updateAt
+                      userId
+                      user {
+                        username
+                      }
+                    }
+                  }
+                `, {
+                  variables: {
+                    slug: slug
+                  }
+                })).request
+                if(res.BySlug == null) {
+                  throw Error()
+                }
+                setPost(res.BySlug)
+            } catch (_) {
                 router.push("/notfound")
             } finally {
                 setLoading(false)
@@ -63,34 +65,68 @@ const [myUser, setMyUser] = React.useState<User | undefined>(undefined)
   }, [slug])
 
   if (loading) {
-    return <div className="text-center mt-20 text-muted-foreground">Memuat...</div>
+    return <div className="text-center mt-20 text-muted-foreground">Loading...</div>
   }
 
   if (!post) {
-    return <div className="text-center mt-20 text-destructive">Post tidak ditemukan</div>
+    return <div className="text-center mt-20 text-destructive">Blog not defined</div>
   }
 
-    const deleteHandle = () => {
-        const token = Cookies.get("token")
-        const dataPromise = axios.delete("/api/protected/post/"+post.postId, {
-        headers: {
-          "Content-Type": "Application/json",
-          "Authorization": `Bearer ${token}` 
-        },
-      })
-      toast.promise(dataPromise, {
-        loading: 'Loading...',
-        success: (response) => {
-          const data: ApiResponse = response.data
-          if(data.error || !data.data) {
-            if(data.data as ErrorZod[]) return zodErrorValidateToStr(data.data as ErrorZod[])
-            return "Uh oh! Something went wrong: " + JSON.stringify(data.data)
-          }
-          return `Post has been deleted`;
-        },
-        error: (err) => (err?.data?.data as ErrorZod[]) ? zodErrorValidateToStr(err?.data?.message as ErrorZod[]) : err?.data?.message || err?.message || "Unknown error"
-      });
-    }
+  const deleteHandle = () => {
+    const deletePost = apiFetch(`
+      mutation blogs($postId: [String!]!) {
+        delete(postId: $postId) {
+          title
+          slug
+          content
+        }
+      }  
+    `, {
+      variables: {
+        postId: [post.postId]
+      }
+    })
+    toast.promise(deletePost, {
+      loading: "Deleted...",
+      error: (err) => {
+        return "error"
+      },
+      success: (data) => {
+        const response = data.request
+        setTimeout(() => {
+          router.push("/"+post.user?.username || "account")
+        }, 200);
+        return `"${response.delete.title || post.title}" success delete`
+      }
+    })
+  }
+  const visibilityHandle = () => {
+    const deletePost = apiFetch(`
+      mutation Change($postId: String!) {
+        ChangeVisibility(postId: $postId) {
+          status
+        }
+      }
+    `, {
+      variables: {
+        postId: post.postId
+      }
+    })
+    toast.promise(deletePost, {
+      loading: "Updates...",
+      error: (err) => {
+        return "error"
+      },
+      success: (data) => {
+        const response = data.request
+        setTimeout(() => {
+          router.refresh()
+        }, 200);
+        return `"${post.title}" success update`
+      }
+    })
+  }
+
 
   return (
     <motion.div
@@ -110,12 +146,16 @@ const [myUser, setMyUser] = React.useState<User | undefined>(undefined)
                     : "Tanggal tidak valid"
                 }
             </span>
+            {post.status == "private" && (
+              <>
+                <span>•</span>
+                <span>private blog</span>
+              </>
+            )}
         </div>
 
-        {/* Separator adaptif */}
         <Separator className="bg-border" />
 
-        {/* Breadcrumb adaptif */}
         <Breadcrumb className="my-2">
             <BreadcrumbList>
                 <BreadcrumbItem>
@@ -139,29 +179,54 @@ const [myUser, setMyUser] = React.useState<User | undefined>(undefined)
             <ReactMarkdown>{post.content}</ReactMarkdown>
         </article>
         <Separator className="bg-border mt-4" /> 
-        {myUser?.username == post.user?.username && (
-            <>
-                <Link href={`/account/post?=edit=edit&slug=${post.slug}`}><Button variant="outline" className="w-full mt-4">Edit</Button></Link>
-                <Dialog>
-                    <DialogTrigger asChild>
-                        <Button variant="destructive" className="w-full">Delete Post</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Are you absolutely sure?</DialogTitle>
-                            <DialogDescription>
-                                This action cannot be undone. This will permanently delete your post.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <DialogFooter>
-                            <DialogClose asChild>
-                            <Button variant="outline">Cancel</Button>
-                            </DialogClose>
-                            <Button type="submit" onClick={() => deleteHandle()}>Delete</Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-            </>
+        {isAuth && user?.userId == post.userId && (
+            <div className="flex justify-between items-center mt-6">
+              <ButtonGroup className="flex-1">
+                <Button onClick={() => router.replace(`/account/post?edit=edit&slug=${post.slug}`)} variant="outline">Edit</Button>
+              </ButtonGroup>
+              <ButtonGroup aria-label="destruction button group" className="w-full flex-1 flex justify-end">
+                  <Dialog>
+                      <DialogTrigger asChild>
+                          <Button variant="destructive" className="border border-foreground">
+                              Change to {post.status === "private" ? "public" : "private"}
+                          </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                          <DialogHeader>
+                              <DialogTitle>Are you absolutely sure?</DialogTitle>
+                              <DialogDescription>
+                                  This will change your blog to private
+                              </DialogDescription>
+                          </DialogHeader>
+                          <DialogFooter>
+                              <DialogClose asChild>
+                                  <Button variant="outline">Cancel</Button>
+                              </DialogClose>
+                              <Button type="submit" onClick={() => visibilityHandle()}>Update</Button>
+                          </DialogFooter>
+                      </DialogContent>
+                  </Dialog>
+                  <Dialog>
+                      <DialogTrigger asChild>
+                          <Button variant="destructive" className="border border-foreground">Delete Post</Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                          <DialogHeader>
+                              <DialogTitle>Are you absolutely sure?</DialogTitle>
+                              <DialogDescription>
+                                  This action cannot be undone. This will permanently delete your post.
+                              </DialogDescription>
+                          </DialogHeader>
+                          <DialogFooter>
+                              <DialogClose asChild>
+                                  <Button variant="outline">Cancel</Button>
+                              </DialogClose>
+                              <Button type="submit" onClick={() => deleteHandle()}>Delete</Button>
+                          </DialogFooter>
+                      </DialogContent>
+                  </Dialog>
+              </ButtonGroup>
+          </div>
         )}
     </motion.div>
   )

@@ -27,7 +27,12 @@ export default function Logout() {
                     return "not logged"
                 }
             },
-            error: "Failed logout"
+            error: () => {
+                setTimeout(() => {
+                    router.replace("/")
+                }, 200);
+                return "Failed logout"
+            }
         })
     }, [])
 }

@@ -217,7 +217,7 @@ export default function BlogDetailPage() {
                             name="title"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Title {JSON.stringify(form.formState.errors)}</FormLabel>
+                                    <FormLabel>Title</FormLabel>
                                     <FormControl>
                                         <Input placeholder="Insert title..." {...field} />
                                     </FormControl>

@@ -33,15 +33,11 @@ export default function UserPage() {
                 const res = (await apiFetch(`
                   query PostWithUser($username: String!) {
                       ByUser(username: $username) {
-                        email
                         fullname
                         profilePicture
-                        status
                         uniqueId
-                        updateAt
                         userId
                         username
-                        verified
                         posts {
                           content
                           createdAt
@@ -62,7 +58,8 @@ export default function UserPage() {
                 setUserWithPost(res.ByUser)
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             } catch (e) {
-                router.push("/notfound")
+              console.log(e)
+                // router.push("/notfound")
             } finally {
                 setLoading(false)
             }

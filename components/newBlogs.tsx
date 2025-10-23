@@ -80,7 +80,6 @@ export default function NewBlogs({ userId }: { userId?: string }) {
                         variables: { skip, take: pageSize }
                     }
                 )).request
-                console.log(result)
                 const blogList = result?.GetAll ?? []
                 const postCount = result?.postsCount ?? 0
 
@@ -182,7 +181,7 @@ export default function NewBlogs({ userId }: { userId?: string }) {
                                 <Card className={cn("w-80 shadow-md hover:shadow-xl transition-shadow duration-300 flex flex-col justify-between")}>
                                     <CardContent className="p-6 pb-3">
                                         <CardTitle className="mb-2 text-xl">
-                                            <Link href={`/${blog.user?.fullname}/${blog.slug}`}>
+                                            <Link href={`/${blog.user?.username}/${blog.slug}`}>
                                                 {blog.title}
                                             </Link>
                                         </CardTitle>

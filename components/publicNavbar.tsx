@@ -41,11 +41,15 @@ export function PublicNavbar() {
                         </Button>
                     </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => router.push("/account")}>
-                            My Account
+                        <DropdownMenuItem>
+                            <Link href="/account" title="redirect to my account" aria-label="redirect to my account">
+                              My Account
+                            </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => router.push("/logout")}>
-                            Logout
+                            <Link href="/logout" title="redirect to my account" aria-label="redirect to my account">
+                              Logout
+                            </Link>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

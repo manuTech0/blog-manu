@@ -99,9 +99,9 @@ export default function UserPage() {
         </Avatar>
         <div>
           <h1 className="text-2xl font-bold">
-            {userWithPost.username}
+            {userWithPost.fullname}
           </h1>
-          <p className="text-muted-foreground">@{userWithPost.fullname}</p>
+          <p className="text-muted-foreground">@{userWithPost.username}</p>
           <p className="text-sm text-muted-foreground">ID: {userWithPost.uniqueId}</p>
         </div>
       </div>

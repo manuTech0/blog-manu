@@ -104,7 +104,6 @@ export async function generateMetadata(
         } satisfies Metadata; // ✅ Type check
         
     } catch (e) {
-        console.error("Error generating metadata:", e);
         const readableTitle = param.slug?.replaceAll("-", " ") || "Post";
         
         return {

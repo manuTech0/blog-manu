@@ -7,10 +7,9 @@ export async function generateMetadata(
     { params }: { params: Promise<{ slug: string }> }
 ): Promise<Metadata> {
     const param = await params;
-
+    
     try {
         const token = (await cookies()).get("token")?.value;
-
         const res = (
             await apiFetch(
                 `
@@ -37,27 +36,49 @@ export async function generateMetadata(
                 }
             )
         ).request;
-
+        
         const post = res?.BySlug;
-
+        
         if (!post) {
             return {
                 title: "Post Not Found – Blog App",
-                description: "The post you’re looking for does not exist or has been removed.",
-                robots: { index: false, follow: false },
-            };
+                description: "The post you're looking for does not exist or has been removed.",
+                robots: { 
+                    index: false, 
+                    follow: false 
+                },
+            } satisfies Metadata; // ✅ Type check
         }
-
+        
+        // ✅ Helper: Strip HTML/Markdown
+        const stripFormatting = (text: string): string => {
+            return text
+                .replace(/<[^>]*>/g, '')           // Remove HTML tags
+                .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // [text](url) -> text
+                .replace(/[#*_`~]/g, '')           // Remove markdown symbols
+                .replace(/\s+/g, ' ')              // Normalize spaces
+                .trim();
+        };
+        
+        // ✅ Generate description dengan fallback
+        const cleanContent = post.content ? stripFormatting(post.content) : '';
+        const description = cleanContent.length > 0
+            ? cleanContent.slice(0, 155) + (cleanContent.length > 155 ? '...' : '')
+            : `Read "${post.title}" by ${post.user?.username || 'our author'} on Blog App.`;
+        
         const title = `${post.title} – Blog App`;
-        const description = post.content?.slice(0, 160) || "Read this article on Blog App.";
         const url = `https://blog.manu-tech.my.id/${post.user?.username}/${post.slug}`;
-
+        
         return {
             title,
-            description,
+            description, // ✅ MUST be present
+            metadataBase: new URL('https://blog.manu-tech.my.id'), // ✅ Recommended
+            alternates: {
+                canonical: url,
+            },
             openGraph: {
                 title,
-                description,
+                description, // ✅ Same description
                 type: "article",
                 url,
                 publishedTime: post.createdAt,
@@ -67,24 +88,29 @@ export async function generateMetadata(
                     {
                         url: post.user?.profilePicture || "/default-avatar.png",
                         alt: post.title,
+                        width: 1200,
+                        height: 630,
                     },
                 ],
+                siteName: "Blog App",
             },
             twitter: {
                 card: "summary_large_image",
                 title,
-                description,
-                images: [
-                    post.user?.profilePicture || "/default-avatar.png",
-                ],
+                description, // ✅ Same description
+                images: [post.user?.profilePicture || "/default-avatar.png"],
+                creator: `@${post.user?.username}`,
             },
-        };
+        } satisfies Metadata; // ✅ Type check
+        
     } catch (e) {
+        console.error("Error generating metadata:", e);
         const readableTitle = param.slug?.replaceAll("-", " ") || "Post";
+        
         return {
             title: `${readableTitle} – Blog App`,
-            description: `Read ${readableTitle} on Blog App.`,
-        };
+            description: `Read "${readableTitle}" on Blog App. Discover insightful articles and stories.`,
+        } satisfies Metadata; // ✅ Type check
     }
 }
 

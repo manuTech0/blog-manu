@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+Allow: /site.webmanifest.json
+
+Sitemap: https://www.manu-tech.my.id/sitemap.xml

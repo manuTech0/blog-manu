@@ -94,7 +94,7 @@ export default function UserPage() {
 
       <div className="flex items-center gap-4 mb-6">
         <Avatar className="h-16 w-16">
-          <AvatarImage src={userWithPost.profilePicture!} />
+          <AvatarImage src={userWithPost.profilePicture!} alt={`${userWithPost.username} profile`}/>
           <AvatarFallback>{(userWithPost.username || "")[0].toLocaleUpperCase()}</AvatarFallback>
         </Avatar>
         <div>

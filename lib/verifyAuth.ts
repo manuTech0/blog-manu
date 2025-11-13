@@ -41,7 +41,8 @@ export async  function verifyAuth(req: NextRequest) {
         const token = req.cookies.get("token")?.value
         const res = (await apiFetch(query, {
             headers: {
-                cookie: token ? `token=${token}` : ""
+                cookie: token ? `token=${token}` : "",
+                "Origin": req.headers.get("origin") || "https://blog.manu-tech.my.id"
             }
         })).request
         let user: User | null = null

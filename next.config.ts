@@ -10,7 +10,10 @@ const nextConfig: NextConfig = {
   /* config options here */
   images: {
     domains: ["lh3.googleusercontent.com"]
-  }
+  },
+  experimental: {
+    optimizePackageImports: []
+  },
 };
 
 export default nextConfig;

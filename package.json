@@ -9,6 +9,21 @@
     "lint": "next lint",
     "seed": "bun prisma/seed.ts"
   },
+  "browserlist": {
+    "production": [
+      "last 2 Chrome versions",
+      "last 2 Edge versions",
+      "last 2 Firefox versions",
+      "last 2 Safari versions",
+      "last IE 11",
+      "not dead"
+    ],
+    "development": [
+      "last 1 Chrome version",
+      "last 1 Firefox version",
+      "last 1 Safari version"
+    ]
+  },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
     "@next/bundle-analyzer": "^15.3.3",
